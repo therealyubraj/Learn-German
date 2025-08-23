@@ -1,4 +1,7 @@
 {
   "name": "Learn-German",
+  "scripts": {
+    "deploy": "cd client && pnpm run dist && cd dist && rclone sync -L -P . personal-r2:learn-german"
+  },
   "packageManager": "pnpm@10.13.1+sha1.aa8c167c4509c97519542ef77a09e4b8ab59fb6a"
 }

@@ -4,6 +4,83 @@ import { VERBS, type VerbItem } from "./list";
 import { VimInputQuiz } from "./VerbInput";
 
 // ================== OPFS STORAGE HELPERS ==================
+let activePool: number[] = []; // indexes of VERBS currently in play
+let learned: Set<number> = new Set();
+let poolSize = 12;
+
+function fillPool(stats: Record<number, { correct: number; wrong: number }>) {
+  if (activePool.length >= poolSize) {
+    return;
+  }
+
+  // Score verbs: higher = more urgent to study
+  const scored = VERBS.map((_, i) => {
+    const s = stats[i] || { correct: 0, wrong: 0 };
+    const total = s.correct + s.wrong;
+
+    // Heuristic scoring:
+    // - wrong answers boost score
+    // - fewer total exposures boost score
+    // - correct answers reduce score
+    let score = s.wrong * 3 - s.correct + (total === 0 ? 2 : 0);
+
+    if (learned.has(i)) {
+      score = -1;
+    }
+
+    return { index: i, score };
+  });
+
+  // Sort by score descending (higher priority first)
+  scored.sort((a, b) => b.score - a.score);
+
+  // Pick top N for active pool
+  activePool = activePool.concat(
+    scored.slice(0, poolSize - activePool.length).map((s) => s.index)
+  );
+}
+
+function promoteWord(
+  index: number,
+  stats: Record<number, { correct: number; wrong: number }>
+) {
+  if (stats[index].correct >= 3) {
+    // mark as learned
+    learned.add(index);
+    // remove from active pool
+    activePool = activePool.filter((i) => i !== index);
+
+    fillPool(stats);
+  }
+}
+
+function pickNextVerbIndex(
+  stats: Record<number, { correct: number; wrong: number }>,
+  previousIndex: number | null
+): number {
+  // compute weights for activePool
+  const weights = activePool.map((i) => {
+    const s = stats[i] || { correct: 0, wrong: 0 };
+    let weight = 1 + s.wrong * 3 - s.correct * 0.5;
+
+    // avoid previousIndex
+    if (i === previousIndex) weight = 0;
+
+    return Math.max(weight, 0.1);
+  });
+
+  const total = weights.reduce((a, b) => a + b, 0);
+  let rnd = Math.random() * total;
+
+  for (let j = 0; j < activePool.length; j++) {
+    rnd -= weights[j];
+    if (rnd <= 0) return activePool[j];
+  }
+
+  // fallback if something goes wrong
+  return activePool.find((i) => i !== previousIndex) || activePool[0];
+}
+
 async function saveStats(
   stats: Record<number, { correct: number; wrong: number }>
 ) {
@@ -45,25 +122,6 @@ function normalize(str: string): string {
     .trim();
 }
 
-function pickNextVerbIndex(
-  stats: Record<number, { correct: number; wrong: number }>
-): number {
-  const weights = VERBS.map((_, i) => {
-    const s = stats[i] || { correct: 0, wrong: 0 };
-    // Basic weighting: wrong answers increase weight, correct answers decrease it slightly
-    return 1 + s.wrong * 2 - s.correct * 0.5;
-  });
-
-  const total = weights.reduce((a, b) => a + Math.max(b, 0.1), 0);
-  let rnd = Math.random() * total;
-
-  for (let i = 0; i < weights.length; i++) {
-    rnd -= Math.max(weights[i], 0.1);
-    if (rnd <= 0) return i;
-  }
-  return 0;
-}
-
 // ================== MAIN QUIZ COMPONENT ==================
 export function ENtoDEVerbQuiz() {
   const [current, setCurrent] = useState(0);
@@ -82,6 +140,8 @@ export function ENtoDEVerbQuiz() {
     (async () => {
       const loaded = await loadStats();
       setStats(loaded);
+
+      fillPool(loaded);
       // pick an initial random verb
       setCurrent(Math.floor(Math.random() * VERBS.length));
     })();
@@ -97,6 +157,7 @@ export function ENtoDEVerbQuiz() {
     if (!updated[current]) updated[current] = { correct: 0, wrong: 0 };
     if (isCorrect) {
       updated[current].correct++;
+      promoteWord(current, updated);
       setFeedback("correct");
     } else {
       updated[current].wrong++;
@@ -106,41 +167,13 @@ export function ENtoDEVerbQuiz() {
     saveStats(updated);
   };
 
-  const giveUp = () => {
-    const updated = { ...stats };
-    if (!updated[current]) updated[current] = { correct: 0, wrong: 0 };
-    updated[current].wrong++;
-    setStats(updated);
-    saveStats(updated);
-    setFeedback("givenUp");
-  };
-
-  const nextVerb = () => {
+  const nextVerb = (prevIdx: number) => {
     if (feedback === null) return;
     setAnswer("");
     setFeedback(null);
-    const nextIndex = pickNextVerbIndex(stats);
+    const nextIndex = pickNextVerbIndex(stats, prevIdx);
     setCurrent(nextIndex);
   };
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight" && feedback !== null) {
-        nextVerb();
-      } else if (event.key === "ArrowUp") {
-        giveUp();
-      }
-
-      // Allow Enter even while typing
-      if (event.key === "Enter" && answer.trim() !== "" && feedback === null) {
-        checkAnswer();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [answer, feedback, stats]);
 
   return (
     <div className="quiz-container max-w-5xl mx-auto bg-gray-800 rounded-2xl shadow-xl p-8 space-y-8 text-gray-100">
@@ -167,7 +200,7 @@ export function ENtoDEVerbQuiz() {
       <VimInputQuiz
         currentVerb={currentVerb}
         checkAnswer={checkAnswer}
-        nextVerb={nextVerb}
+        nextVerb={() => nextVerb(current)}
         giveUp={() => {
           setFeedback("givenUp");
           setAnswer(currentVerb.de[0]); // reveal answer
