@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { speak } from "../utils/tts";
 
 interface VerbItem {
   en: string;
@@ -31,6 +32,7 @@ export function VimInputQuiz({
   feedback,
 }: VimInputQuizProps) {
   const [mode, setMode] = useState<"insert" | "normal">("insert");
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [previousAnswers, setPreviousAnswers] = useState<PreviousAnswer[]>([]);
   const inputRef = useRef<HTMLInputElement>(null); // new ref
 
@@ -46,19 +48,30 @@ export function VimInputQuiz({
   }, [answer, feedback, currentVerb.en, nextVerb, setAnswer]);
 
   // Give up callback
-  const handleGiveUp = useCallback(() => {
+  const handleGiveUp = useCallback(async () => {
     setPreviousAnswers((prev) => [
       ...prev,
       { en: currentVerb.en, answer: currentVerb.de[0] },
     ]);
     setAnswer(currentVerb.de[0]);
     giveUp();
+    setIsSpeaking(true);
+    await speak(currentVerb.de[0]);
+    setIsSpeaking(false);
     setMode("normal"); // automatically switch to normal mode
   }, [currentVerb.en, currentVerb.de, giveUp, setAnswer]);
 
   // Auto switch to normal mode on correct
   useEffect(() => {
-    if (feedback === "correct") setMode("normal");
+    const handleCorrect = async () => {
+      if (feedback === "correct") {
+        setMode("normal");
+        setIsSpeaking(true);
+        await speak(currentVerb.de[0]);
+        setIsSpeaking(false);
+      }
+    };
+    handleCorrect();
   }, [feedback]);
 
   // Keyboard shortcuts (unchanged)
@@ -76,15 +89,18 @@ export function VimInputQuiz({
           checkAnswer();
         }
       } else if (mode === "normal") {
-        e.preventDefault();
         if (e.key.toLowerCase() === "i") {
+          e.preventDefault();
           setMode("insert");
           inputRef.current?.focus(); // focus input when switching to insert
         } else if (e.key.toLowerCase() === "n") {
+          e.preventDefault();
           handleNext();
         } else if (e.key.toLowerCase() === "z") {
+          e.preventDefault();
           handleGiveUp();
         } else if (e.key === "Enter") {
+          e.preventDefault();
           handleNext();
         }
       }
@@ -165,9 +181,11 @@ export function VimInputQuiz({
         </button>
         <button
           onClick={handleNext}
-          disabled={!(feedback === "correct" || feedback === "givenUp")}
+          disabled={
+            !(feedback === "correct" || feedback === "givenUp") || isSpeaking
+          }
           className={`px-14 py-5 text-xl font-bold rounded-lg shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-            !(feedback === "correct" || feedback === "givenUp")
+            !(feedback === "correct" || feedback === "givenUp") || isSpeaking
               ? "bg-gray-700 text-gray-500 cursor-not-allowed"
               : "bg-gray-700 text-white hover:bg-gray-600"
           }`}
