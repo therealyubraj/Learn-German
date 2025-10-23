@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { VERBS } from "./new_list";
-import { VimInputQuiz } from "./VerbInput";
+import { QuizInput } from "./QuizInput";
+import type { QuizItem } from "../types";
 
 interface Stats {
   correct: number;
@@ -14,7 +14,12 @@ interface StoredData {
   learned: number[];
 }
 
-export function ENtoDEVerbQuiz() {
+interface QuizProps {
+  items: QuizItem[];
+  quizType: string;
+}
+
+export function Quiz({ items, quizType }: QuizProps) {
   const poolSize = 12;
 
   const [stats, setStats] = useState<Record<number, Stats>>({});
@@ -26,12 +31,14 @@ export function ENtoDEVerbQuiz() {
     null | "correct" | "wrong" | "givenUp"
   >(null);
 
+  const statsFileName = `${quizType}-quiz-stats.json`;
+
   // Load stats from OPFS
   useEffect(() => {
     (async () => {
       try {
         const root = await (navigator as any).storage.getDirectory();
-        const handle = await root.getFileHandle("verb-quiz-stats.json", {
+        const handle = await root.getFileHandle(statsFileName, {
           create: true,
         });
         const file = await handle.getFile();
@@ -47,7 +54,7 @@ export function ENtoDEVerbQuiz() {
           fillPool(data.stats || {}, data.learned || []);
         }
 
-        const initialIndex = pickNextVerbIndex(
+        const initialIndex = pickNextItemIndex(
           data.stats || {},
           null,
           data.activePool || []
@@ -56,10 +63,10 @@ export function ENtoDEVerbQuiz() {
       } catch {
         // no saved stats yet
         fillPool({}, []);
-        setCurrent(pickNextVerbIndex({}, null, activePool));
+        setCurrent(pickNextItemIndex({}, null, activePool));
       }
     })();
-  }, []);
+  }, [items, quizType]);
 
   const saveData = async (
     updatedStats?: Record<number, Stats>,
@@ -67,7 +74,7 @@ export function ENtoDEVerbQuiz() {
     updatedLearned?: Set<number>
   ) => {
     const root = await (navigator as any).storage.getDirectory();
-    const handle = await root.getFileHandle("verb-quiz-stats.json", {
+    const handle = await root.getFileHandle(statsFileName, {
       create: true,
     });
     const writable = await handle.createWritable();
@@ -84,7 +91,7 @@ export function ENtoDEVerbQuiz() {
   const fillPool = (s: Record<number, Stats>, l: number[]) => {
     let pool = [...activePool];
     const learnedSet = new Set(l);
-    const scored = VERBS.map((_, i) => {
+    const scored = items.map((_, i) => {
       const stat = s[i] || { correct: 0, wrong: 0 };
       const total = stat.correct + stat.wrong;
       let score = stat.wrong * 3 - stat.correct + (total === 0 ? 2 : 0);
@@ -110,12 +117,21 @@ export function ENtoDEVerbQuiz() {
     }
   };
 
-  const pickNextVerbIndex = (
+  const demoteWord = (i: number) => {
+    if (learned.has(i)) {
+      const newLearned = new Set(learned);
+      newLearned.delete(i);
+      setLearned(newLearned);
+      setActivePool((prev) => [...prev, i]);
+    }
+  };
+
+  const pickNextItemIndex = (
     s: Record<number, Stats>,
     previous: number | null,
     pool: number[]
   ): number => {
-    if (pool.length === 0) return Math.floor(Math.random() * VERBS.length);
+    if (pool.length === 0) return Math.floor(Math.random() * items.length);
 
     const weights = pool.map((i) => {
       const stat = s[i] || { correct: 0, wrong: 0 };
@@ -135,8 +151,8 @@ export function ENtoDEVerbQuiz() {
 
   const checkAnswer = () => {
     if (!answer.trim()) return;
-    const currentVerb = VERBS[current];
-    const isCorrect = currentVerb.de.includes(answer);
+    const currentItem = items[current];
+    const isCorrect = currentItem.de.includes(answer);
 
     const updated = { ...stats };
     if (!updated[current]) updated[current] = { correct: 0, wrong: 0 };
@@ -146,6 +162,7 @@ export function ENtoDEVerbQuiz() {
       setFeedback("correct");
     } else {
       updated[current].wrong++;
+      demoteWord(current);
       setFeedback("wrong");
     }
     setStats(updated);
@@ -153,47 +170,52 @@ export function ENtoDEVerbQuiz() {
   };
 
   const giveUp = () => {
-    setAnswer(VERBS[current].de[0]);
+    setAnswer(items[current].de[0]);
     setFeedback("givenUp");
 
     const updated = { ...stats };
     if (!updated[current]) updated[current] = { correct: 0, wrong: 0 };
     updated[current].wrong++;
+    demoteWord(current);
     setStats(updated);
     saveData(updated);
   };
 
-  const nextVerb = () => {
+  const nextItem = () => {
     if (!(feedback === "correct" || feedback === "givenUp")) return;
     setAnswer("");
     setFeedback(null);
-    const nextIndex = pickNextVerbIndex(stats, current, activePool);
+    const nextIndex = pickNextItemIndex(stats, current, activePool);
     setCurrent(nextIndex);
   };
+
+  if (!items || items.length === 0) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="quiz-container max-w-5xl mx-auto bg-gray-800 rounded-2xl shadow-xl p-8 space-y-8 text-gray-100 flex flex-col md:flex-row">
       <div className="flex-1">
         <h2 className="text-4xl font-bold text-white text-center">
-          German Verb Quiz
+          German {quizType.charAt(0).toUpperCase() + quizType.slice(1)} Quiz
         </h2>
         <p className="text-center text-gray-300 text-sm mt-2">
           Attempted{" "}
           {Object.values(stats).reduce((a, s) => a + s.correct + s.wrong, 0)}{" "}
-          verbs so far
+          {quizType} so far
         </p>
 
         <div className="text-center mt-6 space-y-4">
-          <p className="text-xl text-gray-300">What is the German verb for:</p>
+          <p className="text-xl text-gray-300">What is the German {quizType.slice(0, -1)} for:</p>
           <p className="text-5xl font-bold text-blue-400">
-            {VERBS[current].en}
+            {items[current].en}
           </p>
         </div>
 
-        <VimInputQuiz
-          currentVerb={VERBS[current]}
+        <QuizInput
+          currentItem={items[current]}
           checkAnswer={checkAnswer}
-          nextVerb={nextVerb}
+          nextVerb={nextItem}
           giveUp={giveUp}
           answer={answer}
           setAnswer={setAnswer}
@@ -217,17 +239,17 @@ export function ENtoDEVerbQuiz() {
                 ? "Correct!"
                 : feedback === "wrong"
                 ? "Wrong, try again."
-                : `Answer: ${VERBS[current].de.join(", ")}`}
+                : `Answer: ${items[current].de.join(", ")}`}
             </motion.div>
           )}
         </div>
       </div>
 
       <div className="md:w-1/4 md:ml-6 mt-6 md:mt-0 bg-gray-700 p-4 rounded-xl">
-        <h3 className="text-lg font-semibold text-white mb-2">Learned Verbs</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">Learned {quizType}</h3>
         <ul className="text-gray-300 text-sm max-h-[60vh] overflow-y-auto space-y-1">
           {Array.from(learned).map((i) => (
-            <li key={i}>{VERBS[i].en}</li>
+            <li key={i}>{items[i].en}</li>
           ))}
         </ul>
       </div>
@@ -235,4 +257,4 @@ export function ENtoDEVerbQuiz() {
   );
 }
 
-export default ENtoDEVerbQuiz;
+export default Quiz;

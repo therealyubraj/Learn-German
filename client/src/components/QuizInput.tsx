@@ -1,19 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { speak } from "../utils/tts";
-
-interface VerbItem {
-  en: string;
-  de: string[];
-  note?: string;
-}
+import type { QuizItem } from "../types";
 
 interface PreviousAnswer {
   en: string;
   answer: string;
 }
 
-interface VimInputQuizProps {
-  currentVerb: VerbItem;
+interface QuizInputProps {
+  currentItem: QuizItem;
   checkAnswer: () => void;
   nextVerb: () => void;
   giveUp: () => void;
@@ -22,15 +17,15 @@ interface VimInputQuizProps {
   feedback: null | "correct" | "wrong" | "givenUp";
 }
 
-export function VimInputQuiz({
-  currentVerb,
+export function QuizInput({
+  currentItem,
   checkAnswer,
   nextVerb,
   giveUp,
   answer,
   setAnswer,
   feedback,
-}: VimInputQuizProps) {
+}: QuizInputProps) {
   const [mode, setMode] = useState<"insert" | "normal">("insert");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [previousAnswers, setPreviousAnswers] = useState<PreviousAnswer[]>([]);
@@ -39,27 +34,34 @@ export function VimInputQuiz({
   // Next button callback
   const handleNext = useCallback(() => {
     if (feedback === "correct" || feedback === "givenUp") {
-      setPreviousAnswers((prev) => [...prev, { en: currentVerb.en, answer }]);
+      setPreviousAnswers((prev) => [...prev, { en: currentItem.en, answer }]);
       setAnswer("");
       nextVerb();
       setMode("insert"); // switch mode
       setTimeout(() => inputRef.current?.focus(), 0); // focus input
     }
-  }, [answer, feedback, currentVerb.en, nextVerb, setAnswer]);
+  }, [answer, feedback, currentItem.en, nextVerb, setAnswer]);
 
   // Give up callback
   const handleGiveUp = useCallback(async () => {
     setPreviousAnswers((prev) => [
       ...prev,
-      { en: currentVerb.en, answer: currentVerb.de[0] },
+      { en: currentItem.en, answer: currentItem.de[0] },
     ]);
-    setAnswer(currentVerb.de[0]);
+    setAnswer(currentItem.de[0]);
     giveUp();
     setIsSpeaking(true);
-    await speak(currentVerb.de[0]);
+    await speak(currentItem.de[0]);
     setIsSpeaking(false);
     setMode("normal"); // automatically switch to normal mode
-  }, [currentVerb.en, currentVerb.de, giveUp, setAnswer]);
+  }, [currentItem.en, currentItem.de, giveUp, setAnswer]);
+
+  const handleSpeak = useCallback(async () => {
+    if (isSpeaking) return;
+    setIsSpeaking(true);
+    await speak(currentItem.de[0]);
+    setIsSpeaking(false);
+  }, [currentItem.de, isSpeaking]);
 
   // Auto switch to normal mode on correct
   useEffect(() => {
@@ -67,14 +69,13 @@ export function VimInputQuiz({
       if (feedback === "correct") {
         setMode("normal");
         setIsSpeaking(true);
-        await speak(currentVerb.de[0]);
+        await speak(currentItem.de[0]);
         setIsSpeaking(false);
       }
     };
     handleCorrect();
-  }, [feedback]);
+  }, [feedback, currentItem.de]);
 
-  // Keyboard shortcuts (unchanged)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const targetTag = (e.target as HTMLElement).tagName;
@@ -99,6 +100,11 @@ export function VimInputQuiz({
         } else if (e.key.toLowerCase() === "z") {
           e.preventDefault();
           handleGiveUp();
+        } else if (e.key.toLowerCase() === "s") {
+          if (feedback === "correct" || feedback === "givenUp") {
+            e.preventDefault();
+            handleSpeak();
+          }
         } else if (e.key === "Enter") {
           e.preventDefault();
           handleNext();
@@ -108,7 +114,7 @@ export function VimInputQuiz({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mode, handleNext, handleGiveUp, checkAnswer]);
+  }, [mode, handleNext, handleGiveUp, checkAnswer, feedback, handleSpeak]);
 
   // ... rest of component remains unchanged ...
 
@@ -125,14 +131,15 @@ export function VimInputQuiz({
       )}
 
       {/* Input */}
-      <input
-        ref={inputRef} // attach ref
-        type="text"
-        value={answer}
-        onChange={(e) => setAnswer(e.target.value)}
-        placeholder="Type your answer..."
-        disabled={feedback === "correct" || feedback === "givenUp"}
-        className={`w-full min-h-[80px] px-6 py-4 text-center
+      <div className="flex items-center justify-center w-full">
+        <input
+          ref={inputRef} // attach ref
+          type="text"
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Type your answer..."
+          disabled={feedback === "correct" || feedback === "givenUp"}
+          className={`w-full min-h-[80px] px-6 py-4 text-center
           text-[3em] bg-gray-900 placeholder-gray-400 text-white
           border-2 ${
             feedback === "correct" || feedback === "givenUp"
@@ -147,7 +154,18 @@ export function VimInputQuiz({
           focus:outline-none focus:ring-2 focus:ring-offset-1
           transition-all duration-300
         `}
-      />
+        />
+        <button
+          onClick={handleSpeak}
+          disabled={
+            !(feedback === "correct" || feedback === "givenUp") || isSpeaking
+          }
+          className="ml-4 p-4 rounded-full bg-gray-700 text-2xl hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+          aria-label="Listen to pronunciation"
+        >
+          🔊
+        </button>
+      </div>
 
       <div className="text-sm text-gray-400 text-center">
         {mode === "insert" ? "Insert" : "Normal"}

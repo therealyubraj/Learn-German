@@ -1,10 +1,6 @@
-// src/data/new_verbs.ts
-export interface VerbItem {
-  en: string;
-  de: string[];
-}
+import type { QuizItem } from "../types";
 
-export const VERBS: VerbItem[] = [
+export const VERBS_V2 = [
   { en: "to abandon", de: ["verlassen"] },
   { en: "to abolish", de: ["abschaffen"] },
   { en: "to absorb", de: ["absorbieren"] },

@@ -9,17 +9,17 @@ The purpose of this file is to store essential project information so that the G
 ## Gemini Agent Workflow
 
 When a UI requirement is given, the agent will:
-1. Take a screenshot using the `ss.sh` script.
+1. Take a screenshot using the `ss.sh` script, but only when the user requests a visual change.
 2. Always Explicitly read and analyze the screenshot located at `.gemini/screenshots/screenshot.png`.
 3. If an error message is present in the screenshot, explicitly output it.
 4. Formulate a plan to implement the given UI requirement based on the analysis.
-4. When using the `replace` or `write_file` tools, explicitly read and verify the tool's output to confirm that changes were successfully made to the file. If no changes are detected when expected, re-evaluate the `old_string` or `new_string` parameters.
-5. When attempts are running low, explicitly read and understand error messages from screenshots to diagnose issues effectively.
-6. Limit attempts to fix/implement a specific issue to 5. On each attempt, at least one line of code must be changed. After 5 attempts, the agent will give up and wait for user intervention to prevent rate limit issues.
+5. When using the `replace` or `write_file` tools, explicitly read and verify the tool's output to confirm that changes were successfully made to the file. If no changes are detected when expected, re-evaluate the `old_string` or `new_string` parameters.
+6. When attempts are running low, explicitly read and understand error messages from screenshots to diagnose issues effectively.
+7. Limit attempts to fix/implement a specific issue to 5. On each attempt, at least one line of code must be changed. After 5 attempts, the agent will give up and wait for user intervention to prevent rate limit issues.
 
 ### UI Screenshots
 
-The `ss.sh` script in the root directory can be used to take screenshots of the UI from Chrome.
+The `ss.sh` script in the root directory can be used to take screenshots of the UI from Chrome. This should only be used when the user asks for a visual change.
 
 ## Project Overview
 
@@ -34,14 +34,18 @@ This is a monorepo for a German learning application, managed with pnpm workspac
 - **Build Tool:** Vite
 - **Styling:** Tailwind CSS
 - **UI Components:** Framer Motion is used for animations.
+- **Routing:** React Router DOM is used for routing.
 - **Package Manager:** pnpm
 
 ### Key Files
 
-- `client/src/App.tsx`: Main application component.
+- `client/src/App.tsx`: Main application component, which sets up the routing.
 - `client/src/main.tsx`: Application entry point.
+- `client/src/components/Quiz.tsx`: The main component for the quizzes.
+- `client/src/data/nouns.ts`: The data for the noun quiz.
+- `client/src/data/verbs.ts`: The data for the verb quiz.
 - `client/vite.config.ts`: Vite configuration.
-- `client/tailwind.config.js` (assumed): Tailwind CSS configuration.
+- `client/tailwind.config.js`: Tailwind CSS configuration.
 - `client/package.json`: Frontend dependencies and scripts.
 
 ### Common Commands

@@ -1,10 +1,4 @@
-// src/data/verbs.ts
-export interface VerbItem {
-  en: string;
-  de: string[];
-}
-
-export const OLD_VERBS: VerbItem[] = [
+export const VERBS_V1 = [
   // Core demo verbs
   { en: "to be", de: ["sein"] },
   { en: "to have", de: ["haben"] },
