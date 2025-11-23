@@ -28,6 +28,18 @@ This is a monorepo for a German learning application, managed with pnpm workspac
 - **`/` (root):** The root contains the pnpm workspace configuration (`pnpm-workspace.yaml`).
 - **`/client`:** A React application built with Vite. This is the primary frontend for the project.
 
+## New Project Version Plan
+
+The user intends to create a new, updated version of this German learning application. This new version will likely involve rebuilding or significantly refactoring existing components and features. The goal is to improve the application's overall design, functionality, and user experience.
+
+### Word List Management Feature
+
+-   **Goal:** Allow users to create and manage their own custom word lists, moving away from hardcoded data.
+-   **User Interface:** A dedicated screen will be developed for word list management, enabling users to create, view, edit, delete, and combine their word lists.
+-   **Storage:** User-created word lists will be stored using the Origin Private File System (OPFS).
+-   **Quiz Integration:** Users will be able to select and combine their saved word lists for learning new words.
+-   **Statistics:** The checksum of the combined and sorted word list will be used as a unique identifier for storing and tracking learning statistics.
+
 ## Client (`/client`) Details
 
 - **Framework:** React with TypeScript
