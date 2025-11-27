@@ -1,0 +1,83 @@
+/* Source - https://stackoverflow.com/a/79449026 
+Posted by Susmit Ullas
+Retrieved 2025-11-23, License - CC BY-SA 4.0
+*/
+
+@import "tailwindcss";
+
+@layer base {
+
+  /* 1. The Reset */
+  *,
+  *::before,
+  *::after {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* 2. THE FIX: Paint the global background */
+  html,
+  body {
+    @apply bg-gray-950 text-gray-100;
+    /* Extremely dark gray background */
+    min-height: 100vh;
+    /* Ensure it covers the full height */
+  }
+
+  /* 3. Hide Scrollbars */
+  * {
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+  }
+
+  /* Custom styles for range input (sliders) */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent; /* Make default track invisible */
+    cursor: pointer;
+    width: 100%;
+  }
+
+  /* Track styles for Webkit browsers */
+  input[type="range"]::-webkit-slider-runnable-track {
+    background: #4b5563; /* Tailwind gray-600 */
+    border-radius: 0.5rem; /* rounded-lg */
+    height: 0.5rem; /* h-2 */
+  }
+
+  /* Thumb styles for Webkit browsers */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default */
+    border: none; /* Remove default border */
+    height: 1.25rem; /* Larger for easier grabbing */
+    width: 1.25rem; /* Larger for easier grabbing */
+    border-radius: 9999px; /* fully rounded */
+    background: #3b82f6; /* Tailwind blue-500 */
+    margin-top: -0.375rem; /* Adjust to center vertically on track */
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); /* Subtle glow */
+  }
+
+  /* Track styles for Mozilla browsers */
+  input[type="range"]::-moz-range-track {
+    background: #4b5563; /* Tailwind gray-600 */
+    border-radius: 0.5rem; /* rounded-lg */
+    height: 0.5rem; /* h-2 */
+  }
+
+  /* Thumb styles for Mozilla browsers */
+  input[type="range"]::-moz-range-thumb {
+    border: none; /* Remove default border */
+    height: 1.25rem; /* Larger for easier grabbing */
+    width: 1.25rem; /* Larger for easier grabbing */
+    border-radius: 9999px; /* fully rounded */
+    background: #3b82f6; /* Tailwind blue-500 */
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); /* Subtle glow */
+  }
+}

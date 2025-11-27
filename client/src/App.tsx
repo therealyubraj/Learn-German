@@ -1,21 +1,44 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import "./App.css";
+import { UserImport } from "./components/UserImport";
+import { OPFSExplorer } from "./components/OPFS";
+import { Navbar } from "./components/Navbar";
+import { Quiz } from "./components/Quiz";
+import { QuizSelectionScreen } from "./components/QuizSelectionScreen";
+import { Settings } from "./components/Settings";
+import { VimModeProvider } from "./contexts/VimModeContext";
+import { TTSProvider } from "./contexts/TTSContext";
 
 function Home() {
   return (
     <div className="text-center">
       <nav className="flex flex-col items-center gap-8"></nav>
+      <div className="flex flex-col gap-3">
+        <Link to={"/import"}>Add word list</Link>
+        <Link to={"/quiz-selection"}>Quiz</Link>
+        <Link to={"/settings"}>Settings</Link>
+      </div>
     </div>
   );
 }
 
 function App() {
   return (
-    <div className="flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-      <Routes>
-        <Route path="/" element={<Home />} />
-      </Routes>
-    </div>
+    <VimModeProvider>
+      <TTSProvider>
+        <div className="relative flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/import" element={<UserImport />} />
+            <Route path="/opfs" element={<OPFSExplorer />} />
+            <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
+            <Route path="/quiz" element={<Quiz />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </div>
+      </TTSProvider>
+    </VimModeProvider>
   );
 }
 
