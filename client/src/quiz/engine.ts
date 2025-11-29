@@ -1,7 +1,6 @@
 import { Word, WordStats, WordStatsMap } from "../types";
 
 const MAX_LEVEL = 8;
-const ACTIVE_POOL_SIZE = 20;
 
 // Review intervals in milliseconds
 const REVIEW_INTERVALS: { [key: number]: number } = {
@@ -20,6 +19,7 @@ export type QuizSession = {
   stats: WordStatsMap;
   activePool: Word[];
   lastPresentedWord: Word | null;
+  activePoolSize: number;
 };
 
 function fillActivePool(
@@ -61,7 +61,7 @@ function fillActivePool(
   });
 
   const newActivePool = [...currentSession.activePool];
-  const wordsToAddCount = ACTIVE_POOL_SIZE - newActivePool.length;
+  const wordsToAddCount = currentSession.activePoolSize - newActivePool.length;
 
   if (wordsToAddCount > 0) {
     const wordsToAddToPool = dueWords.filter(
@@ -78,12 +78,13 @@ function fillActivePool(
   return { updatedActivePool: newActivePool, updatedStats };
 }
 
-export function createQuizSession(words: Word[], stats: WordStatsMap): QuizSession {
+export function createQuizSession(words: Word[], stats: WordStatsMap, activePoolSize: number): QuizSession {
   const initialSession: QuizSession = {
     words,
     stats,
     activePool: [],
     lastPresentedWord: null,
+    activePoolSize,
   };
   const { updatedActivePool, updatedStats } = fillActivePool(initialSession);
   return {

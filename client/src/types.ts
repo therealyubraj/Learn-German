@@ -22,9 +22,14 @@ export type VimSettings = {
   enabled: boolean;
 };
 
+export type QuizSettings = {
+  activePoolSize: number;
+};
+
 export type AppSettings = {
   tts: TTSSettings;
   vim: VimSettings;
+  quiz: QuizSettings;
 };
 
 export interface WordStats {

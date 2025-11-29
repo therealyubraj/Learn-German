@@ -9,10 +9,11 @@ import { computeChecksum } from "../hash";
 export function useQuizEngine(
   initialWords: Word[],
   initialStats: WordStatsMap,
-  setIsActionInProgress: (inProgress: boolean) => void
+  setIsActionInProgress: (inProgress: boolean) => void,
+  activePoolSize: number
 ) {
   const [session, setSession] = useState(() =>
-    quizEngine.createQuizSession(initialWords, initialStats)
+    quizEngine.createQuizSession(initialWords, initialStats, activePoolSize)
   );
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const [isLoading, setIsLoading] = useState(true);

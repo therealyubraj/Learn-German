@@ -8,6 +8,7 @@ import { QuizSelectionScreen } from "./components/QuizSelectionScreen";
 import { Settings } from "./components/Settings";
 import { VimModeProvider } from "./contexts/VimModeContext";
 import { TTSProvider } from "./contexts/TTSContext";
+import { NavigationProvider } from "./contexts/NavigationContext";
 
 function Home() {
   return (
@@ -26,17 +27,19 @@ function App() {
   return (
     <VimModeProvider>
       <TTSProvider>
-        <div className="relative flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/import" element={<UserImport />} />
-            <Route path="/opfs" element={<OPFSExplorer />} />
-            <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
-            <Route path="/quiz" element={<Quiz />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </div>
+        <NavigationProvider>
+          <div className="relative flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/import" element={<UserImport />} />
+              <Route path="/opfs" element={<OPFSExplorer />} />
+              <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </div>
+        </NavigationProvider>
       </TTSProvider>
     </VimModeProvider>
   );

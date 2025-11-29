@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { storage } from "../FS/Storage";
-import { Word, WordStatsMap } from "../types";
+import { Word, WordStatsMap, AppSettings } from "../types";
 import { QuizView } from "./QuizView";
 import { useVimMode } from "../contexts/VimModeContext";
 import { useQuizEngine } from "../hooks/useQuizEngine";
 import { computeChecksum } from "../hash";
+import { loadSettings, getDefaultSettings } from "../settings/service";
 
 export function Quiz() {
   const [searchParams] = useSearchParams();
@@ -13,6 +14,7 @@ export function Quiz() {
 
   const [initialWords, setInitialWords] = useState<Word[]>([]);
   const [initialStats, setInitialStats] = useState<WordStatsMap>({});
+  const [settings, setSettings] = useState<AppSettings>(getDefaultSettings());
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +32,9 @@ export function Quiz() {
       }
 
       try {
+        const appSettings = await loadSettings();
+        setSettings(appSettings);
+
         const lists = await Promise.all(
           listIds.map((id) => storage.getListById(id))
         );
@@ -75,6 +80,7 @@ export function Quiz() {
       initialWords={initialWords}
       initialStats={initialStats}
       setIsActionInProgress={setIsActionInProgress}
+      activePoolSize={settings.quiz.activePoolSize}
     />
   );
 }
@@ -84,15 +90,16 @@ type QuizEngineWrapperProps = {
   initialWords: Word[];
   initialStats: WordStatsMap;
   setIsActionInProgress: (inProgress: boolean) => void;
+  activePoolSize: number;
 };
 
-function QuizEngineWrapper({ initialWords, initialStats, setIsActionInProgress }: QuizEngineWrapperProps) {
+function QuizEngineWrapper({ initialWords, initialStats, setIsActionInProgress, activePoolSize }: QuizEngineWrapperProps) {
   const {
     currentWord,
     isLoading: isEngineLoading,
     isFinished,
     submitAnswer,
-  } = useQuizEngine(initialWords, initialStats, setIsActionInProgress);
+  } = useQuizEngine(initialWords, initialStats, setIsActionInProgress, activePoolSize);
 
   const handleNext = (isCorrect: boolean) => {
     submitAnswer(isCorrect);

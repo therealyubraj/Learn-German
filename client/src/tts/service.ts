@@ -4,16 +4,26 @@
  * Retrieves the available voices from the browser's SpeechSynthesis API.
  * @returns A promise that resolves to an array of SpeechSynthesisVoice objects.
  */
-export async function getVoices(): Promise<SpeechSynthesisVoice[]> {
+export function getVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
-    const voices = window.speechSynthesis.getVoices();
+    let voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
-      resolve(voices);
-      return;
+      return resolve(voices);
     }
-    window.speechSynthesis.onvoiceschanged = () => {
-      resolve(window.speechSynthesis.getVoices());
-    };
+
+    const a =_=> {
+        voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          resolve(voices);
+        }
+    }
+
+    window.speechSynthesis.addEventListener('voiceschanged', a);
+    setTimeout(_=> {
+        a();
+        resolve(voices);
+    }, 250);
+
   });
 }
 
