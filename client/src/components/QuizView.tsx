@@ -3,7 +3,7 @@ import { Word } from "../types";
 
 type QuizViewProps = {
   currentWord: Word;
-  onNext: () => void;
+  onNext: (isCorrect: boolean) => void;
 };
 
 export function QuizView({ currentWord, onNext }: QuizViewProps) {

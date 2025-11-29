@@ -26,3 +26,14 @@ export type AppSettings = {
   tts: TTSSettings;
   vim: VimSettings;
 };
+
+export interface WordStats {
+  level: number;       // Mastery level, e.g., 1-8
+  lastReviewedAt: number; // Timestamp of the last review (milliseconds since epoch)
+  nextReviewAt: number;   // Timestamp for the next scheduled review (milliseconds since epoch)
+  createdAt: number;     // Timestamp when the word was first introduced (milliseconds since epoch)
+}
+
+export type WordStatsMap = {
+  [wordIdentifier: string]: WordStats; // `wordIdentifier` is LHS + '|' + RHS
+};

@@ -12,7 +12,7 @@ import { useVimMode } from "../contexts/VimModeContext";
 
 type Props = {
   answer: string;
-  onNext: () => void;
+  onNext: (isCorrect: boolean) => void;
 };
 
 export function QuizControls({ answer, onNext }: Props) {
@@ -36,10 +36,13 @@ export function QuizControls({ answer, onNext }: Props) {
   const hasSpokenRef = useRef(false);
 
   useEffect(() => {
-    if (!isActionInProgress) {
-      inputRef.current?.focus();
-    }
-  }, [isActionInProgress]);
+    // This effect runs for every new question because the parent <QuizView> gives
+    // this component a new `key` prop, which forces a re-mount.
+    setIsActionInProgress(false);
+    setVimMode("insert"); // Set vim mode to insert for the new question
+    hasSpokenRef.current = false; // Reset speech guard
+    inputRef.current?.focus(); // Focus the input for the new question
+  }, [answer, setIsActionInProgress, setVimMode]); // `answer` is a stable dependency to trigger this effect for each new word
 
   useEffect(() => {
     if (
@@ -52,20 +55,22 @@ export function QuizControls({ answer, onNext }: Props) {
   }, [answerState.hasAnsweredCorrectly, answerState.hasGivenUp, answer, speak]);
 
   const handleCheckAnswer = () => {
-    if (answerState.inputValue.trim().toLowerCase() === answer.toLowerCase()) {
+    const isCorrect =
+      answerState.inputValue.trim().toLowerCase() === answer.toLowerCase();
+    if (isCorrect) {
       setAnswerState({
         ...answerState,
         hasAnsweredCorrectly: true,
       });
-      setIsActionInProgress(true); // Set action in progress
-      setVimMode("normal"); // Switch to normal mode
+      setIsActionInProgress(true);
+      setVimMode("normal");
     } else {
       setAnswerState({
         ...answerState,
         incorrectAttempts: answerState.incorrectAttempts + 1,
       });
       setShouldShake(true);
-      setTimeout(() => setShouldShake(false), 500); // Animation duration
+      setTimeout(() => setShouldShake(false), 500);
     }
   };
 
@@ -75,13 +80,13 @@ export function QuizControls({ answer, onNext }: Props) {
       inputValue: answer,
       hasGivenUp: true,
     });
-    setIsActionInProgress(true); // Set action in progress
-    setVimMode("normal"); // Switch to normal mode
+    setIsActionInProgress(true);
+    setVimMode("normal");
   };
 
   const handleNextQuestion = () => {
-    onNext();
-    setIsActionInProgress(false); // Reset action in progress for the next word
+    // The engine needs to know the result of the last interaction
+    onNext(answerState.hasAnsweredCorrectly);
   };
 
   const baseButtonClasses =

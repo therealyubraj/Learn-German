@@ -1,40 +1,31 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { storage } from "../FS/Storage";
-import { Word } from "../types";
+import { Word, WordStatsMap } from "../types";
 import { QuizView } from "./QuizView";
 import { useVimMode } from "../contexts/VimModeContext";
-
-// Fisher-Yates shuffle algorithm
-function shuffleArray<T>(array: T[]): T[] {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-}
+import { useQuizEngine } from "../hooks/useQuizEngine";
+import { computeChecksum } from "../hash";
 
 export function Quiz() {
   const [searchParams] = useSearchParams();
   const { setIsActionInProgress, setVimMode } = useVimMode();
-  const [words, setWords] = useState<Word[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [quizFinished, setQuizFinished] = useState(false);
+  const [initialWords, setInitialWords] = useState<Word[]>([]);
+  const [initialStats, setInitialStats] = useState<WordStatsMap>({});
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Reset the action and vim states at the beginning of every new quiz
     setIsActionInProgress(false);
     setVimMode("insert");
 
-    async function fetchAndCombineLists() {
+    async function loadInitialData() {
       const listIds = searchParams.get("lists")?.split(",");
       if (!listIds || listIds.length === 0) {
         setError("No word lists selected.");
-        setLoading(false);
+        setIsLoadingData(false);
         return;
       }
 
@@ -42,47 +33,76 @@ export function Quiz() {
         const lists = await Promise.all(
           listIds.map((id) => storage.getListById(id))
         );
-
         const combinedWords = lists
-          .filter((list) => list !== null) // Filter out any lists that weren't found
+          .filter((list) => list !== null)
           .flatMap((list) => list!.words);
 
         if (combinedWords.length === 0) {
           setError("The selected lists are empty or could not be found.");
-          setLoading(false);
+          setIsLoadingData(false);
           return;
         }
 
-        setWords(shuffleArray(combinedWords));
+        const checksum = await computeChecksum(combinedWords);
+        const stats = await storage.loadStats(checksum);
+        
+        setInitialWords(combinedWords);
+        setInitialStats(stats || {});
       } catch (e) {
-        console.error("Failed to fetch word lists:", e);
-        setError("An error occurred while loading the word lists.");
+        console.error("Failed to load initial quiz data:", e);
+        setError("An error occurred while loading the quiz data.");
       } finally {
-        setLoading(false);
+        setIsLoadingData(false);
       }
     }
 
-    fetchAndCombineLists();
-  }, [searchParams, setIsActionInProgress]);
+    loadInitialData();
+  }, [searchParams, setIsActionInProgress, setVimMode]);
 
-  const handleNextWord = () => {
-    if (currentWordIndex < words.length - 1) {
-      setCurrentWordIndex(currentWordIndex + 1);
-    } else {
-      setQuizFinished(true);
-    }
-  };
-
-  if (loading) {
+  // Once initial data is loaded, the QuizEngine takes over
+  if (isLoadingData) {
     return <div>Loading quiz...</div>;
   }
-
+  
   if (error) {
-    // Redirect back to selection if there's an error
     return <Navigate to="/quiz-selection" replace />;
   }
+  
+  // The QuizEngineWrapper handles the actual quiz logic.
+  // This separation prevents re-triggering the initial data load.
+  return (
+    <QuizEngineWrapper
+      initialWords={initialWords}
+      initialStats={initialStats}
+      setIsActionInProgress={setIsActionInProgress}
+    />
+  );
+}
 
-  if (quizFinished) {
+
+type QuizEngineWrapperProps = {
+  initialWords: Word[];
+  initialStats: WordStatsMap;
+  setIsActionInProgress: (inProgress: boolean) => void;
+};
+
+function QuizEngineWrapper({ initialWords, initialStats, setIsActionInProgress }: QuizEngineWrapperProps) {
+  const {
+    currentWord,
+    isLoading: isEngineLoading,
+    isFinished,
+    submitAnswer,
+  } = useQuizEngine(initialWords, initialStats, setIsActionInProgress);
+
+  const handleNext = (isCorrect: boolean) => {
+    submitAnswer(isCorrect);
+  };
+  
+  if (isEngineLoading) {
+    return <div>Starting quiz...</div>;
+  }
+
+  if (isFinished) {
     return (
       <div className="text-center">
         <h1 className="text-4xl font-bold">Quiz Finished!</h1>
@@ -90,11 +110,10 @@ export function Quiz() {
     );
   }
 
-  if (words.length === 0) {
+  if (!currentWord) {
+    // This can happen if the list is empty or engine fails to select a word
     return <Navigate to="/quiz-selection" replace />;
   }
 
-  const currentWord = words[currentWordIndex];
-
-  return <QuizView currentWord={currentWord} onNext={handleNextWord} />;
+  return <QuizView currentWord={currentWord} onNext={handleNext} />;
 }

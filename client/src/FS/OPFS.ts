@@ -1,9 +1,9 @@
 import { computeChecksum } from "../hash";
-import type { WordList } from "../types";
+import type { WordList, WordStatsMap } from "../types";
 import { IStorageProvider } from "./IStorageProvider";
 
 const WORDS_DIR = "wordlists";
-// Note: OPFS paths do not use standard OS separators like './'
+const STATS_DIR = "stats";
 
 export class OPFS extends IStorageProvider {
   private async getWordsDirHandle(): Promise<FileSystemDirectoryHandle> {
@@ -13,6 +13,15 @@ export class OPFS extends IStorageProvider {
 
     const root = await navigator.storage.getDirectory();
     return root.getDirectoryHandle(WORDS_DIR, { create: true });
+  }
+
+  private async getStatsDirHandle(): Promise<FileSystemDirectoryHandle> {
+    if (!navigator.storage || !navigator.storage.getDirectory) {
+      throw new Error("OPFS API is not supported in this browser environment.");
+    }
+
+    const root = await navigator.storage.getDirectory();
+    return root.getDirectoryHandle(STATS_DIR, { create: true });
   }
 
   async addNewList(wordList: WordList): Promise<void> {
@@ -111,8 +120,6 @@ export class OPFS extends IStorageProvider {
   async writeFile(path: string, content: string): Promise<void> {
     try {
       const root = await navigator.storage.getDirectory();
-      // Note: This logic assumes simple paths. It might need to be enhanced
-      // for nested directories if the path contains '/'.
       const fileHandle = await root.getFileHandle(path, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(content);
@@ -131,10 +138,40 @@ export class OPFS extends IStorageProvider {
       return await file.text();
     } catch (error) {
       if (error instanceof Error && error.name === 'NotFoundError') {
-        return null; // File does not exist, return null
+        return null;
       }
       console.error(`Failed to read file "${path}" from OPFS:`, error);
-      throw error; // For other errors, re-throw
+      throw error;
+    }
+  }
+
+  async saveStats(checksum: string, stats: WordStatsMap): Promise<void> {
+    const jsonStr = JSON.stringify(stats);
+    try {
+      const dirHandle = await this.getStatsDirHandle();
+      const fileHandle = await dirHandle.getFileHandle(`${checksum}.json`, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(jsonStr);
+      await writable.close();
+    } catch (error) {
+      console.error(`Failed to save stats for checksum "${checksum}" to OPFS:`, error);
+      throw new Error("Could not save the stats to local storage.");
+    }
+  }
+
+  async loadStats(checksum: string): Promise<WordStatsMap | null> {
+    try {
+      const dirHandle = await this.getStatsDirHandle();
+      const fileHandle = await dirHandle.getFileHandle(`${checksum}.json`);
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      return JSON.parse(content);
+    } catch (error) {
+      if (error instanceof Error && error.name === "NotFoundError") {
+        return null;
+      }
+      console.error(`Failed to read stats for checksum "${checksum}" from OPFS:`, error);
+      return null;
     }
   }
 }
