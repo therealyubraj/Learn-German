@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // We are adding a comment here to force a rebuild of the CSS
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",

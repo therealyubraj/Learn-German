@@ -5,6 +5,7 @@ import { Word, WordStatsMap } from "../types";
 import * as quizEngine from "../quiz/engine";
 import { storage } from "../FS/Storage";
 import { computeChecksum } from "../hash";
+import { createStableWordId } from "../lib";
 
 export function useQuizEngine(
   initialWords: Word[],
@@ -24,7 +25,9 @@ export function useQuizEngine(
   useEffect(() => {
     async function calculateChecksum() {
       if (initialWords.length > 0) {
-        const checksum = await computeChecksum(initialWords);
+        const checksum = await computeChecksum(
+          createStableWordId(initialWords)
+        );
         setWordlistChecksum(checksum);
       }
     }

@@ -1,12 +1,8 @@
-import { createStableWordId } from "./lib";
-import type { Word } from "./types";
-
 /**
- * Computes a SHA-256 checksum for an array of QuizItems.
  * Ensures deterministic hashing by first converting the data
  * into a JSON string.
  */
-export async function computeChecksum(words: Word[]): Promise<string> {
+export async function computeChecksum(str: string): Promise<string> {
   if (
     typeof window === "undefined" ||
     !window.crypto ||
@@ -16,7 +12,6 @@ export async function computeChecksum(words: Word[]): Promise<string> {
     return "0000000000000000000000000000000000000000000000000000000000000000";
   }
 
-  const str = createStableWordId(words);
   // CRITICAL STEP: Consistent Serialization
   // The hashing algorithm only accepts byte data, so we must first
   // convert the JavaScript object into a stable string format.

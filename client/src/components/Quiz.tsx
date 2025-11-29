@@ -7,6 +7,7 @@ import { useVimMode } from "../contexts/VimModeContext";
 import { useQuizEngine } from "../hooks/useQuizEngine";
 import { computeChecksum } from "../hash";
 import { loadSettings, getDefaultSettings } from "../settings/service";
+import { createStableWordId } from "../lib";
 
 export function Quiz() {
   const [searchParams] = useSearchParams();
@@ -48,9 +49,11 @@ export function Quiz() {
           return;
         }
 
-        const checksum = await computeChecksum(combinedWords);
+        const checksum = await computeChecksum(
+          createStableWordId(combinedWords)
+        );
         const stats = await storage.loadStats(checksum);
-        
+
         setInitialWords(combinedWords);
         setInitialStats(stats || {});
       } catch (e) {
@@ -68,11 +71,11 @@ export function Quiz() {
   if (isLoadingData) {
     return <div>Loading quiz...</div>;
   }
-  
+
   if (error) {
     return <Navigate to="/quiz-selection" replace />;
   }
-  
+
   // The QuizEngineWrapper handles the actual quiz logic.
   // This separation prevents re-triggering the initial data load.
   return (
@@ -85,7 +88,6 @@ export function Quiz() {
   );
 }
 
-
 type QuizEngineWrapperProps = {
   initialWords: Word[];
   initialStats: WordStatsMap;
@@ -93,18 +95,28 @@ type QuizEngineWrapperProps = {
   activePoolSize: number;
 };
 
-function QuizEngineWrapper({ initialWords, initialStats, setIsActionInProgress, activePoolSize }: QuizEngineWrapperProps) {
+function QuizEngineWrapper({
+  initialWords,
+  initialStats,
+  setIsActionInProgress,
+  activePoolSize,
+}: QuizEngineWrapperProps) {
   const {
     currentWord,
     isLoading: isEngineLoading,
     isFinished,
     submitAnswer,
-  } = useQuizEngine(initialWords, initialStats, setIsActionInProgress, activePoolSize);
+  } = useQuizEngine(
+    initialWords,
+    initialStats,
+    setIsActionInProgress,
+    activePoolSize
+  );
 
   const handleNext = (isCorrect: boolean) => {
     submitAnswer(isCorrect);
   };
-  
+
   if (isEngineLoading) {
     return <div>Starting quiz...</div>;
   }

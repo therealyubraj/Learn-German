@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, ChangeEvent } from "react";
 import type { Word, WordList } from "../types";
 import { computeChecksum } from "../hash";
 import { storage } from "../FS/Storage";
+import { createStableWordId } from "../lib";
 
 export function UserImport() {
   // --- STATE ---
-  // Keep these to control the UI, but feel free to move them to a hook
   const [input, setInput] = useState("");
   const [listName, setListName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -13,34 +13,61 @@ export function UserImport() {
 
   // --- LOGIC ---
 
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          // Prettify the JSON for better readability in the textarea
+          const parsed = JSON.parse(content);
+          setInput(JSON.stringify(parsed, null, 2));
+          setError(null);
+        } catch (err) {
+          setError("Failed to parse JSON file.");
+        }
+      };
+      reader.onerror = () => {
+        setError("Failed to read file.");
+      };
+      reader.readAsText(file);
+    }
+  };
+
   const handleImport = async () => {
+    setError(null); // Clear previous errors
+    setSuccessCount(null); // Clear previous success count
+
     try {
       if (!listName.trim()) {
         throw new Error("Word list name cannot be empty.");
       }
 
-      const parsed = JSON.parse(input) as Array<Word>;
-
-      console.log("parsed", parsed, Array.isArray(parsed));
-      if (!Array.isArray(parsed)) {
-        throw new Error(
-          "JSON is valid but must be an array of type: {LHS: string; RHS: string;}"
-        );
+      let parsedWords: Array<Word>;
+      try {
+        parsedWords = JSON.parse(input) as Array<Word>;
+      } catch (err) {
+        throw new Error("Invalid JSON format. Please check for syntax errors.");
       }
 
-      if (parsed.length === 0) {
+      if (!Array.isArray(parsedWords)) {
+        throw new Error("JSON must be an array.");
+      }
+
+      if (parsedWords.length === 0) {
         throw new Error("List is empty.");
       }
 
-      const processedWords = parsed.map(word => ({
-        LHS: word.LHS.trim(),
-        RHS: word.RHS.trim(),
+      const processedWords = parsedWords.map((word) => ({
+        LHS: word.LHS ? String(word.LHS).trim() : "",
+        RHS: word.RHS ? String(word.RHS).trim() : "",
       }));
 
       for (const item of processedWords) {
         if (!item.LHS || !item.RHS) {
           throw new Error(
-            `One of the items contains invalid Word format: ${JSON.stringify(
+            `Each object in the array must have non-empty "LHS" and "RHS" string properties. Found invalid item: ${JSON.stringify(
               item
             )}`
           );
@@ -74,9 +101,10 @@ export function UserImport() {
         checksum: checksum,
       };
 
-      storage.addNewList(newWordList);
-      setError("");
+      await storage.addNewList(newWordList);
       setSuccessCount(processedWords.length);
+      setInput(""); // Clear input after successful save
+      setListName(""); // Clear list name after successful save
     } catch (e: any) {
       setSuccessCount(null);
       setError(e.message);
@@ -92,9 +120,9 @@ export function UserImport() {
 
   return (
     // Outer Layout: Centers the card on the screen
-    <div className="min-h-screen w-full flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-[16px]">
       {/* Card Container */}
-      <div className="w-full max-w-4xl bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-8">
+      <div className="w-full max-w-4xl bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-[32px]">
         {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-white mb-2">
@@ -103,7 +131,7 @@ export function UserImport() {
           <p className="text-gray-400 text-sm">
             Paste your JSON array below. Format:
             <code className="mx-1 bg-gray-700 px-1.5 py-0.5 rounded text-blue-200 font-mono">
-              Array&lt;{"{ en: string; de: string; }"}&gt;
+              Array&lt;{"{ LHS: string; RHS: string; }"}&gt;
             </code>
           </p>
         </div>
@@ -124,7 +152,10 @@ export function UserImport() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             spellCheck={false}
-            placeholder={`[\n  { "en": "Apple", "de": "Apfel" },\n  { "en": "Car", "de": "Auto" }\n]`}
+            placeholder={`[
+  { "LHS": "das Haus", "RHS": "the house" },
+  { "LHS": "die Katze", "RHS": "the cat" }
+]`}
             className={`
               w-full h-64 p-4 rounded-lg font-mono text-sm resize-y border transition-all outline-none
               bg-gray-900 text-gray-100 placeholder-gray-600 focus:ring-2 
@@ -141,8 +172,34 @@ export function UserImport() {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="mt-6 flex justify-end">
+        {/* Success Message Banner */}
+        {successCount !== null && (
+          <div className="mt-4 p-4 bg-green-900/40 border border-green-700/50 text-green-200 rounded-lg text-sm flex items-center animate-pulse-once">
+            <span className="mr-3 text-lg">✅</span>
+            Successfully imported {successCount} words!
+          </div>
+        )}
+
+        {/* Action Buttons and File Picker */}
+        <div className="mt-6 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <label
+              htmlFor="file-upload"
+              className="cursor-pointer px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 transition-colors duration-300"
+            >
+              Load from File
+            </label>
+            <input
+              id="file-upload"
+              type="file"
+              className="hidden"
+              accept=".json"
+              onChange={handleFileChange}
+            />
+            <span className="text-sm text-gray-400">
+              Easier for mobile devices.
+            </span>
+          </div>
           <button
             onClick={handleImport}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg shadow-lg transition-all transform active:scale-95"

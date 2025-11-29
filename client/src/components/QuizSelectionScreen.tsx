@@ -97,7 +97,7 @@ export function QuizSelectionScreen() {
       <div className="mt-8 flex justify-center">
         <button
           onClick={handleStartQuiz}
-          className="px-8 py-4 bg-green-700 text-white font-bold text-xl rounded-lg hover:bg-green-800 transition-colors duration-300"
+          className="px-8 py-4 bg-green-700 text-white font-bold text-xl rounded-lg hover:bg-green-800 transition-colors duration-300 disabled:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={selectedListIds.length === 0}
         >
           Start Quiz
