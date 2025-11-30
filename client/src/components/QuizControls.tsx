@@ -2,8 +2,8 @@
   /* Safelist for Tailwind JIT compiler:
   border-green-500
   border-red-500
-  border-blue-500
   border-gray-600
+  border-blue-500
 */
 }
 import { useState, useRef, useEffect } from "react";
@@ -100,23 +100,21 @@ export function QuizControls({ answer, onNext }: Props) {
                    border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1
                    transition-all duration-300`;
 
-    let dynamicBorderColorClass = "!border-gray-500"; // Default base border from old version
-    let focusRingColorClass = "focus:ring-gray-500"; // Default focus ring for gray-500 border
+    let dynamicBorderColorClass = "";
+    let focusRingColorClass = "";
 
-    if (isVimModeEnabled && vimMode === "normal") {
+    if (answerState.hasAnsweredCorrectly) {
+      dynamicBorderColorClass = "!border-green-500";
+      focusRingColorClass = "focus:ring-green-500";
+    } else if (answerState.incorrectAttempts > 0 || answerState.hasGivenUp) {
+      dynamicBorderColorClass = "!border-red-500";
+      focusRingColorClass = "focus:ring-red-500";
+    } else if (isVimModeEnabled && vimMode === "normal") {
       dynamicBorderColorClass = "!border-gray-600";
       focusRingColorClass = "focus:ring-gray-600";
     } else {
-      if (answerState.hasAnsweredCorrectly) {
-        dynamicBorderColorClass = "!border-green-500";
-        focusRingColorClass = "focus:ring-green-500";
-      } else if (answerState.incorrectAttempts > 0 || answerState.hasGivenUp) {
-        dynamicBorderColorClass = "!border-red-500";
-        focusRingColorClass = "focus:ring-red-500";
-      } else {
-        dynamicBorderColorClass = "!border-blue-500";
-        focusRingColorClass = "focus:ring-blue-500";
-      }
+      dynamicBorderColorClass = "!border-blue-500";
+      focusRingColorClass = "focus:ring-blue-500";
     }
 
     classes += ` ${dynamicBorderColorClass} ${focusRingColorClass}`;

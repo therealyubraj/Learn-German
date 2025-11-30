@@ -223,9 +223,9 @@ export interface TTSSettings {
 
 ## Development Status
 
-Most UI/UX features, including Word List Management (creation via JSON), User Settings (VIM Mode, TTS Voice Selection with dirty check), and basic Quiz Flow with TTS integration, have been largely completed.
+Most UI/UX features, including Word List Management (creation via JSON), User Settings (VIM Mode, TTS Voice Selection with dirty check), and basic Quiz Flow with TTS integration, and the Next Question Selection Algorithm (spaced repetition) have been largely completed.
 
-Next immediate focus is on implementing the 'Next Question Selection Algorithm' (spaced repetition).
+
 
 #### Next Question Selection Algorithm Details
 
