@@ -1,0 +1,50 @@
+[
+  {
+    "LHS": "helfen (to help) | Präteritum",
+    "RHS": "half",
+    "remarks": "Vowel change: e -> a. Example: ich half",
+    "TTS": "ich half"
+  },
+  {
+    "LHS": "helfen (to help) | Partizip II",
+    "RHS": "geholfen",
+    "remarks": "Vowel change: e -> o. Past participle is 'geholfen'.",
+    "TTS": "geholfen"
+  },
+  {
+    "LHS": "sprechen (to speak) | Präteritum",
+    "RHS": "sprach",
+    "remarks": "Vowel change: e -> a. Example: er sprach",
+    "TTS": "er sprach"
+  },
+  {
+    "LHS": "sprechen (to speak) | Partizip II",
+    "RHS": "gesprochen",
+    "remarks": "Vowel change: e -> o. Past participle is 'gesprochen'.",
+    "TTS": "gesprochen"
+  },
+  {
+    "LHS": "nehmen (to take) | Präteritum",
+    "RHS": "nahm",
+    "remarks": "Vowel change: e -> a. Example: sie nahm",
+    "TTS": "sie nahm"
+  },
+  {
+    "LHS": "nehmen (to take) | Partizip II",
+    "RHS": "genommen",
+    "remarks": "Vowel change: e -> o. Past participle is 'genommen'.",
+    "TTS": "genommen"
+  },
+  {
+    "LHS": "treffen (to meet) | Präteritum",
+    "RHS": "traf",
+    "remarks": "Vowel change: e -> a. Example: wir trafen",
+    "TTS": "wir trafen"
+  },
+  {
+    "LHS": "treffen (to meet) | Partizip II",
+    "RHS": "getroffen",
+    "remarks": "Vowel change: e -> o. Past participle is 'getroffen'.",
+    "TTS": "getroffen"
+  }
+]

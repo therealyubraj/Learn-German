@@ -13,9 +13,11 @@ import { useVimMode } from "../contexts/VimModeContext";
 type Props = {
   answer: string;
   onNext: (isCorrect: boolean) => void;
+  remarks?: string;
+  tts?: string;
 };
 
-export function QuizControls({ answer, onNext }: Props) {
+export function QuizControls({ answer, onNext, remarks, tts }: Props) {
   const [answerState, setAnswerState] = useState({
     inputValue: "",
     incorrectAttempts: 0,
@@ -35,6 +37,8 @@ export function QuizControls({ answer, onNext }: Props) {
   } = useVimMode();
   const hasSpokenRef = useRef(false);
 
+  const textToSpeak = tts || answer;
+
   useEffect(() => {
     // This effect runs for every new question because the parent <QuizView> gives
     // this component a new `key` prop, which forces a re-mount.
@@ -49,10 +53,15 @@ export function QuizControls({ answer, onNext }: Props) {
       (answerState.hasAnsweredCorrectly || answerState.hasGivenUp) &&
       !hasSpokenRef.current
     ) {
-      speak(answer);
+      speak(textToSpeak);
       hasSpokenRef.current = true;
     }
-  }, [answerState.hasAnsweredCorrectly, answerState.hasGivenUp, answer, speak]);
+  }, [
+    answerState.hasAnsweredCorrectly,
+    answerState.hasGivenUp,
+    textToSpeak,
+    speak,
+  ]);
 
   const handleCheckAnswer = () => {
     const isCorrect =
@@ -148,7 +157,7 @@ export function QuizControls({ answer, onNext }: Props) {
           data-vim-primary-input="true"
         />
         <button
-          onClick={() => speak(answer)}
+          onClick={() => speak(textToSpeak)}
           disabled={questionMode || isSpeaking}
           className={`${baseButtonClasses} ${
             questionMode || isSpeaking
@@ -160,6 +169,10 @@ export function QuizControls({ answer, onNext }: Props) {
           🔊
         </button>
       </div>
+      {(answerState.hasAnsweredCorrectly || answerState.hasGivenUp) &&
+        remarks && (
+          <p className="text-gray-300 text-lg mt-2 text-center">{remarks}</p>
+        )}
       {isVimModeEnabled && (
         <div>{vimMode === "insert" ? "Insert" : "Normal"}</div>
       )}

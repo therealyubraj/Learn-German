@@ -1,0 +1,80 @@
+[
+  {
+    "LHS": "Präsens | ich",
+    "RHS": "X-e",
+    "remarks": "Example: ich mache (I make)",
+    "TTS": "ich mache"
+  },
+  {
+    "LHS": "Präsens | du",
+    "RHS": "X-st",
+    "remarks": "Example: du machst (you make)",
+    "TTS": "du machst"
+  },
+  {
+    "LHS": "Präsens | er/sie/es",
+    "RHS": "X-t",
+    "remarks": "Example: er macht (he makes)",
+    "TTS": "er macht"
+  },
+  {
+    "LHS": "Präsens | wir",
+    "RHS": "X-en",
+    "remarks": "Example: wir machen (we make)",
+    "TTS": "wir machen"
+  },
+  {
+    "LHS": "Präsens | ihr",
+    "RHS": "X-t",
+    "remarks": "Example: ihr macht (you all make)",
+    "TTS": "ihr macht"
+  },
+  {
+    "LHS": "Präsens | sie/Sie",
+    "RHS": "X-en",
+    "remarks": "Example: sie machen (they make)",
+    "TTS": "sie machen"
+  },
+  {
+    "LHS": "Präteritum | ich",
+    "RHS": "X-te",
+    "remarks": "Example: ich machte (I made)",
+    "TTS": "ich machte"
+  },
+  {
+    "LHS": "Präteritum | du",
+    "RHS": "X-test",
+    "remarks": "Example: du machtest (you made)",
+    "TTS": "du machtest"
+  },
+  {
+    "LHS": "Präteritum | er/sie/es",
+    "RHS": "X-te",
+    "remarks": "Example: er machte (he made)",
+    "TTS": "er machte"
+  },
+  {
+    "LHS": "Präteritum | wir",
+    "RHS": "X-ten",
+    "remarks": "Example: wir machten (we made)",
+    "TTS": "wir machten"
+  },
+  {
+    "LHS": "Präteritum | ihr",
+    "RHS": "X-tet",
+    "remarks": "Example: ihr machtet (you all made)",
+    "TTS": "ihr machtet"
+  },
+  {
+    "LHS": "Präteritum | sie/Sie",
+    "RHS": "X-ten",
+    "remarks": "Example: sie machten (they made)",
+    "TTS": "sie machten"
+  },
+  {
+    "LHS": "Partizip II (Past Participle)",
+    "RHS": "ge-X-t",
+    "remarks": "Used to form the Perfekt and Plusquamperfekt tenses. Example: gemacht (made)",
+    "TTS": "gemacht"
+  }
+]

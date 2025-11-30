@@ -1,0 +1,158 @@
+[
+  {
+    "LHS": "haben | Präsens | ich",
+    "RHS": "habe",
+    "remarks": "Example: ich habe",
+    "TTS": "ich habe"
+  },
+  {
+    "LHS": "haben | Präsens | du",
+    "RHS": "hast",
+    "remarks": "Example: du hast",
+    "TTS": "du hast"
+  },
+  {
+    "LHS": "haben | Präsens | er/sie/es",
+    "RHS": "hat",
+    "remarks": "Example: er hat",
+    "TTS": "er hat"
+  },
+  {
+    "LHS": "haben | Präsens | wir",
+    "RHS": "haben",
+    "remarks": "Example: wir haben",
+    "TTS": "wir haben"
+  },
+  {
+    "LHS": "haben | Präsens | ihr",
+    "RHS": "habt",
+    "remarks": "Example: ihr habt",
+    "TTS": "ihr habt"
+  },
+  {
+    "LHS": "haben | Präsens | sie/Sie",
+    "RHS": "haben",
+    "remarks": "Example: sie haben",
+    "TTS": "sie haben"
+  },
+  {
+    "LHS": "haben | Präteritum | ich",
+    "RHS": "hatte",
+    "remarks": "Example: ich hatte",
+    "TTS": "ich hatte"
+  },
+  {
+    "LHS": "haben | Präteritum | du",
+    "RHS": "hattest",
+    "remarks": "Example: du hattest",
+    "TTS": "du hattest"
+  },
+  {
+    "LHS": "haben | Präteritum | er/sie/es",
+    "RHS": "hatte",
+    "remarks": "Example: er hatte",
+    "TTS": "er hatte"
+  },
+  {
+    "LHS": "haben | Präteritum | wir",
+    "RHS": "hatten",
+    "remarks": "Example: wir hatten",
+    "TTS": "wir hatten"
+  },
+  {
+    "LHS": "haben | Präteritum | ihr",
+    "RHS": "hattet",
+    "remarks": "Example: ihr hattet",
+    "TTS": "ihr hattet"
+  },
+  {
+    "LHS": "haben | Präteritum | sie/Sie",
+    "RHS": "hatten",
+    "remarks": "Example: sie hatten",
+    "TTS": "sie hatten"
+  },
+  {
+    "LHS": "haben | Partizip II",
+    "RHS": "gehabt",
+    "remarks": "The past participle form is 'gehabt'. As in: ich habe gehabt.",
+    "TTS": "gehabt"
+  },
+  {
+    "LHS": "sein | Präsens | ich",
+    "RHS": "bin",
+    "remarks": "Example: ich bin",
+    "TTS": "ich bin"
+  },
+  {
+    "LHS": "sein | Präsens | du",
+    "RHS": "bist",
+    "remarks": "Example: du bist",
+    "TTS": "du bist"
+  },
+  {
+    "LHS": "sein | Präsens | er/sie/es",
+    "RHS": "ist",
+    "remarks": "Example: sie ist",
+    "TTS": "sie ist"
+  },
+  {
+    "LHS": "sein | Präsens | wir",
+    "RHS": "sind",
+    "remarks": "Example: wir sind",
+    "TTS": "wir sind"
+  },
+  {
+    "LHS": "sein | Präsens | ihr",
+    "RHS": "seid",
+    "remarks": "Example: ihr seid",
+    "TTS": "ihr seid"
+  },
+  {
+    "LHS": "sein | Präsens | sie/Sie",
+    "RHS": "sind",
+    "remarks": "Example: sie sind",
+    "TTS": "sie sind"
+  },
+  {
+    "LHS": "sein | Präteritum | ich",
+    "RHS": "war",
+    "remarks": "Example: ich war",
+    "TTS": "ich war"
+  },
+  {
+    "LHS": "sein | Präteritum | du",
+    "RHS": "warst",
+    "remarks": "Example: du warst",
+    "TTS": "du warst"
+  },
+  {
+    "LHS": "sein | Präteritum | er/sie/es",
+    "RHS": "war",
+    "remarks": "Example: es war",
+    "TTS": "es war"
+  },
+  {
+    "LHS": "sein | Präteritum | wir",
+    "RHS": "waren",
+    "remarks": "Example: wir waren",
+    "TTS": "wir waren"
+  },
+  {
+    "LHS": "sein | Präteritum | ihr",
+    "RHS": "wart",
+    "remarks": "Example: ihr wart",
+    "TTS": "ihr wart"
+  },
+  {
+    "LHS": "sein | Präteritum | sie/Sie",
+    "RHS": "waren",
+    "remarks": "Example: sie waren",
+    "TTS": "sie waren"
+  },
+  {
+    "LHS": "sein | Partizip II",
+    "RHS": "gewesen",
+    "remarks": "The past participle form is 'gewesen'. As in: ich bin gewesen.",
+    "TTS": "gewesen"
+  }
+]

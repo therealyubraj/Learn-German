@@ -1,0 +1,50 @@
+[
+  {
+    "LHS": "bleiben (to stay) | Präteritum",
+    "RHS": "blieb",
+    "remarks": "Vowel change: ei -> ie. Example: ich blieb",
+    "TTS": "ich blieb"
+  },
+  {
+    "LHS": "bleiben (to stay) | Partizip II",
+    "RHS": "geblieben",
+    "remarks": "Vowel change: ei -> ie. Past participle is 'geblieben'. Note: Perfekt with 'sein'.",
+    "TTS": "geblieben"
+  },
+  {
+    "LHS": "schreiben (to write) | Präteritum",
+    "RHS": "schrieb",
+    "remarks": "Vowel change: ei -> ie. Example: sie schrieb",
+    "TTS": "sie schrieb"
+  },
+  {
+    "LHS": "schreiben (to write) | Partizip II",
+    "RHS": "geschrieben",
+    "remarks": "Vowel change: ei -> ie. Past participle is 'geschrieben'.",
+    "TTS": "geschrieben"
+  },
+  {
+    "LHS": "steigen (to climb) | Präteritum",
+    "RHS": "stieg",
+    "remarks": "Vowel change: ei -> ie. Example: er stieg",
+    "TTS": "er stieg"
+  },
+  {
+    "LHS": "steigen (to climb) | Partizip II",
+    "RHS": "gestiegen",
+    "remarks": "Vowel change: ei -> ie. Past participle is 'gestiegen'. Note: Perfekt with 'sein'.",
+    "TTS": "gestiegen"
+  },
+  {
+    "LHS": "scheinen (to seem/shine) | Präteritum",
+    "RHS": "schien",
+    "remarks": "Vowel change: ei -> ie. Example: die Sonne schien",
+    "TTS": "die Sonne schien"
+  },
+  {
+    "LHS": "scheinen (to seem/shine) | Partizip II",
+    "RHS": "geschienen",
+    "remarks": "Vowel change: ei -> ie. Past participle is 'geschienen'.",
+    "TTS": "geschienen"
+  }
+]

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { storage } from "../FS/Storage";
-import { Word, WordStatsMap, AppSettings } from "../types";
+import { Word, WordStatsMap, AppSettings, WordList } from "../types";
 import { QuizView } from "./QuizView";
 import { useVimMode } from "../contexts/VimModeContext";
 import { useQuizEngine } from "../hooks/useQuizEngine";
-import { computeChecksum } from "../hash";
 import { loadSettings, getDefaultSettings } from "../settings/service";
-import { createStableWordId } from "../lib";
+import { getWordListChecksum } from "../lib";
 
 export function Quiz() {
   const [searchParams] = useSearchParams();
@@ -49,9 +48,14 @@ export function Quiz() {
           return;
         }
 
-        const checksum = await computeChecksum(
-          createStableWordId(combinedWords)
-        );
+        // Create a temporary WordList object for checksum calculation
+        const tempWordList: WordList = {
+          id: "", // Not relevant for checksum calculation here
+          name: "", // Not relevant for checksum calculation here
+          words: combinedWords,
+          checksum: "", // Will be calculated
+        };
+        const checksum = await getWordListChecksum(tempWordList);
         const stats = await storage.loadStats(checksum);
 
         setInitialWords(combinedWords);

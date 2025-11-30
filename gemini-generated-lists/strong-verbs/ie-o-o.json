@@ -1,0 +1,50 @@
+[
+  {
+    "LHS": "fliegen (to fly) | Präteritum",
+    "RHS": "flog",
+    "remarks": "Vowel change: ie -> o. Example: er flog",
+    "TTS": "er flog"
+  },
+  {
+    "LHS": "fliegen (to fly) | Partizip II",
+    "RHS": "geflogen",
+    "remarks": "Vowel change: ie -> o. Past participle is 'geflogen'. Note: Perfekt with 'sein'.",
+    "TTS": "geflogen"
+  },
+  {
+    "LHS": "verlieren (to lose) | Präteritum",
+    "RHS": "verlor",
+    "remarks": "Vowel change: ie -> o. Example: ich verlor",
+    "TTS": "ich verlor"
+  },
+  {
+    "LHS": "verlieren (to lose) | Partizip II",
+    "RHS": "verloren",
+    "remarks": "Vowel change: ie -> o. Past participle is 'verloren'.",
+    "TTS": "verloren"
+  },
+  {
+    "LHS": "ziehen (to pull/move) | Präteritum",
+    "RHS": "zog",
+    "remarks": "Vowel change: ie -> o. Example: er zog",
+    "TTS": "er zog"
+  },
+  {
+    "LHS": "ziehen (to pull/move) | Partizip II",
+    "RHS": "gezogen",
+    "remarks": "Vowel change: ie -> o. Past participle is 'gezogen'.",
+    "TTS": "gezogen"
+  },
+  {
+    "LHS": "schließen (to close) | Präteritum",
+    "RHS": "schloss",
+    "remarks": "Vowel change: ie -> o. Example: sie schloss",
+    "TTS": "sie schloss"
+  },
+  {
+    "LHS": "schließen (to close) | Partizip II",
+    "RHS": "geschlossen",
+    "remarks": "Vowel change: ie -> o. Past participle is 'geschlossen'.",
+    "TTS": "geschlossen"
+  }
+]

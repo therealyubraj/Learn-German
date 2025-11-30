@@ -1,3 +1,4 @@
+import { getWordIdentifier } from "../lib";
 import { Word, WordStats, WordStatsMap } from "../types";
 
 const MAX_LEVEL = 8;
@@ -33,7 +34,7 @@ function fillActivePool(
   const updatedStats = { ...currentSession.stats };
 
   for (const word of currentSession.words) {
-    const wordIdentifier = `${word.LHS}|${word.RHS}`;
+    const wordIdentifier = getWordIdentifier(word);
     let wordStats = updatedStats[wordIdentifier];
 
     if (!wordStats) {
@@ -53,8 +54,8 @@ function fillActivePool(
   }
 
   dueWords.sort((a, b) => {
-    const statsA = updatedStats[`${a.LHS}|${a.RHS}`];
-    const statsB = updatedStats[`${b.LHS}|${b.RHS}`];
+    const statsA = updatedStats[getWordIdentifier(a)];
+    const statsB = updatedStats[getWordIdentifier(b)];
     const levelA = statsA ? statsA.level : 0;
     const levelB = statsB ? statsB.level : 0;
     return levelA - levelB;
@@ -64,13 +65,14 @@ function fillActivePool(
   const wordsToAddCount = currentSession.activePoolSize - newActivePool.length;
 
   if (wordsToAddCount > 0) {
-    const wordsToAddToPool = dueWords.filter(
-      (word) =>
-        !newActivePool.some(
-          (poolWord) =>
-            `${poolWord.LHS}|${poolWord.RHS}` === `${word.LHS}|${word.RHS}`
-        )
-    ).slice(0, wordsToAddCount);
+    const wordsToAddToPool = dueWords
+      .filter(
+        (word) =>
+          !newActivePool.some(
+            (poolWord) => getWordIdentifier(poolWord) === getWordIdentifier(word)
+          )
+      )
+      .slice(0, wordsToAddCount);
 
     newActivePool.push(...wordsToAddToPool);
   }
@@ -78,7 +80,11 @@ function fillActivePool(
   return { updatedActivePool: newActivePool, updatedStats };
 }
 
-export function createQuizSession(words: Word[], stats: WordStatsMap, activePoolSize: number): QuizSession {
+export function createQuizSession(
+  words: Word[],
+  stats: WordStatsMap,
+  activePoolSize: number
+): QuizSession {
   const initialSession: QuizSession = {
     words,
     stats,
@@ -107,15 +113,18 @@ export function getNextWord(
   }
 
   if (currentActivePool.length === 0) {
-    return { nextWord: null, updatedSession: { ...session, stats: currentStats } };
+    return {
+      nextWord: null,
+      updatedSession: { ...session, stats: currentStats },
+    };
   }
 
   let selectablePool = currentActivePool;
   if (session.lastPresentedWord && currentActivePool.length > 1) {
     selectablePool = currentActivePool.filter(
       (word) =>
-        `${word.LHS}|${word.RHS}` !==
-        `${session.lastPresentedWord!.LHS}|${session.lastPresentedWord!.RHS}`
+        getWordIdentifier(word) !==
+        getWordIdentifier(session.lastPresentedWord!)
     );
   }
 
@@ -144,7 +153,7 @@ export function updateWordStats(
   updatedStats: WordStatsMap;
   updatedActivePool: Word[];
 } {
-  const wordIdentifier = `${word.LHS}|${word.RHS}`;
+  const wordIdentifier = getWordIdentifier(word);
   const now = Date.now();
 
   const updatedStats = { ...session.stats };
@@ -173,7 +182,7 @@ export function updateWordStats(
   if (isCorrect) {
     // If correct, remove from active pool
     updatedActivePool = updatedActivePool.filter(
-      (w) => `${w.LHS}|${w.RHS}` !== wordIdentifier
+      (w) => getWordIdentifier(w) !== wordIdentifier
     );
   }
   // If incorrect, the word remains in the active pool, so no change to updatedActivePool needed here.

@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Word, WordStatsMap } from "../types";
 import * as quizEngine from "../quiz/engine";
 import { storage } from "../FS/Storage";
-import { computeChecksum } from "../hash";
-import { createStableWordId } from "../lib";
+import { getWordListChecksum } from "../lib";
 
 export function useQuizEngine(
   initialWords: Word[],
@@ -25,9 +24,12 @@ export function useQuizEngine(
   useEffect(() => {
     async function calculateChecksum() {
       if (initialWords.length > 0) {
-        const checksum = await computeChecksum(
-          createStableWordId(initialWords)
-        );
+        const checksum = await getWordListChecksum({
+          words: initialWords,
+          id: "", // Not relevant for this checksum calculation
+          name: "", // Not relevant for this checksum calculation
+          checksum: "", // Will be overwritten
+        });
         setWordlistChecksum(checksum);
       }
     }

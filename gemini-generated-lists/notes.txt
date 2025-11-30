@@ -1,0 +1,51 @@
+1. Präsens (Present Simple / Continuous)
+
+- Description: Used for actions happening now, habitual
+  actions, future events with a time marker, and general
+  truths.
+- English Example: I speak German.
+- German Example: Ich spreche Deutsch.
+
+2. Präteritum (Simple Past)
+
+- Description: Primarily used for narrating past events in
+  written contexts (e.g., stories, news reports) or for formal
+  spoken contexts. Also used for "haben" and "sein" in spoken
+  language.
+- English Example: He spoke quickly.
+- German Example: Er sprach schnell.
+
+3. Perfekt (Present Perfect)
+
+- Description: The most common way to talk about past actions
+  in spoken German. Formed with a present tense auxiliary verb
+  (haben or sein) and the Past Participle (Partizip II).
+- English Example: We have eaten already.
+- German Example: Wir haben schon gegessen.
+
+4. Plusquamperfekt (Past Perfect)
+
+- Description: Used to describe an action that was completed
+  before another action in the past. Formed with a past tense
+  auxiliary verb (hatten or waren) and the Past Participle
+  (Partizip II).
+- English Example: They had left before I arrived.
+- German Example: Sie waren gegangen, bevor ich ankam.
+
+5. Futur I (Simple Future)
+
+- Description: Used for future actions or intentions. Often,
+  the Präsens with a time expression is used instead, but Futur
+  I expresses more certainty or a stronger intention. Formed
+  with werden and the infinitive of the main verb.
+- English Example: You will learn a lot.
+- German Example: Du wirst viel lernen.
+
+6. Konjunktiv II (Subjunctive II / Conditional)
+
+- Description: Expresses hypothetical situations, wishes,
+  polite requests, or indirect speech. Not a tense in the
+  strict sense, but a mood. Often formed with würden and the
+  infinitive for most verbs.
+- English Example: I would help you. (If I could.)
+- German Example: Ich würde dir helfen.

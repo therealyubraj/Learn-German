@@ -1,8 +1,7 @@
 import React, { useState, ChangeEvent } from "react";
 import type { Word, WordList } from "../types";
-import { computeChecksum } from "../hash";
 import { storage } from "../FS/Storage";
-import { createStableWordId } from "../lib";
+import { getWordListChecksum } from "../lib";
 
 export function UserImport() {
   // --- STATE ---
@@ -16,6 +15,13 @@ export function UserImport() {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Auto-fill the list name from the filename
+      const fileName = file.name;
+      const listName = fileName.toLowerCase().endsWith(".json")
+        ? fileName.slice(0, -5)
+        : fileName;
+      setListName(listName);
+
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -62,6 +68,8 @@ export function UserImport() {
       const processedWords = parsedWords.map((word) => ({
         LHS: word.LHS ? String(word.LHS).trim() : "",
         RHS: word.RHS ? String(word.RHS).trim() : "",
+        ...(word.remarks && { remarks: String(word.remarks).trim() }), // Include remarks if present
+        ...(word.TTS && { TTS: String(word.TTS).trim() }), // Include TTS if present
       }));
 
       for (const item of processedWords) {
@@ -74,18 +82,15 @@ export function UserImport() {
         }
       }
 
-      processedWords.sort((a, b) => {
-        if (a.LHS < b.LHS) return -1;
-        if (a.LHS > b.LHS) return 1;
-        if (a.RHS < b.RHS) return -1;
-        if (a.RHS > b.RHS) return 1;
-        return 0;
-      });
+      const newWordList: WordList = {
+        id: crypto.randomUUID(), // Generate a unique ID
+        name: listName,
+        words: processedWords,
+        checksum: "", // Checksum will be calculated next
+      };
 
-      const wordsForChecksum = processedWords
-        .map((word) => `${word.LHS}|${word.RHS}`)
-        .join("|");
-      const checksum = await computeChecksum(wordsForChecksum);
+      const checksum = await getWordListChecksum(newWordList);
+      newWordList.checksum = checksum;
 
       // check if this checksum exists in the file system.
       const allChecksums = await storage.getAllListChecksums();
@@ -93,13 +98,6 @@ export function UserImport() {
       if (allChecksums.includes(checksum)) {
         throw new Error("This set of words is already saved to the device.");
       }
-
-      const newWordList: WordList = {
-        id: crypto.randomUUID(), // Generate a unique ID
-        name: listName,
-        words: processedWords,
-        checksum: checksum,
-      };
 
       await storage.addNewList(newWordList);
       setSuccessCount(processedWords.length);

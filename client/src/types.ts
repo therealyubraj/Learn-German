@@ -1,6 +1,8 @@
 export type Word = {
   LHS: string;
   RHS: string;
+  remarks?: string; // Optional field for additional notes or examples
+  TTS?: string; // Optional field for a custom Text-to-Speech string
 };
 
 export type WordList = {

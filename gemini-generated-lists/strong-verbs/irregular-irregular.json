@@ -1,0 +1,62 @@
+[
+  {
+    "LHS": "gehen (to go) | Präteritum",
+    "RHS": "ging",
+    "remarks": "Irregular. Example: ich ging",
+    "TTS": "ich ging"
+  },
+  {
+    "LHS": "gehen (to go) | Partizip II",
+    "RHS": "gegangen",
+    "remarks": "Past participle is 'gegangen'. Note: Perfekt with 'sein'.",
+    "TTS": "gegangen"
+  },
+  {
+    "LHS": "stehen (to stand) | Präteritum",
+    "RHS": "stand",
+    "remarks": "Irregular. Example: er stand",
+    "TTS": "er stand"
+  },
+  {
+    "LHS": "stehen (to stand) | Partizip II",
+    "RHS": "gestanden",
+    "remarks": "Past participle is 'gestanden'.",
+    "TTS": "gestanden"
+  },
+  {
+    "LHS": "tun (to do) | Präteritum",
+    "RHS": "tat",
+    "remarks": "Highly irregular. Example: sie tat",
+    "TTS": "sie tat"
+  },
+  {
+    "LHS": "tun (to do) | Partizip II",
+    "RHS": "getan",
+    "remarks": "Highly irregular. Past participle is 'getan'.",
+    "TTS": "getan"
+  },
+  {
+    "LHS": "wissen (to know) | Präteritum",
+    "RHS": "wusste",
+    "remarks": "Mixed verb. Example: ich wusste",
+    "TTS": "ich wusste"
+  },
+  {
+    "LHS": "wissen (to know) | Partizip II",
+    "RHS": "gewusst",
+    "remarks": "Mixed verb. Past participle is 'gewusst'.",
+    "TTS": "gewusst"
+  },
+  {
+    "LHS": "denken (to think) | Präteritum",
+    "RHS": "dachte",
+    "remarks": "Mixed verb. Example: ich dachte",
+    "TTS": "ich dachte"
+  },
+  {
+    "LHS": "denken (to think) | Partizip II",
+    "RHS": "gedacht",
+    "remarks": "Mixed verb. Past participle is 'gedacht'.",
+    "TTS": "gedacht"
+  }
+]

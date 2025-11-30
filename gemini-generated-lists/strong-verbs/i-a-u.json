@@ -1,0 +1,62 @@
+[
+  {
+    "LHS": "singen (to sing) | Präteritum",
+    "RHS": "sang",
+    "remarks": "Vowel change: i -> a. Example: ich sang",
+    "TTS": "ich sang"
+  },
+  {
+    "LHS": "singen (to sing) | Partizip II",
+    "RHS": "gesungen",
+    "remarks": "Vowel change: i -> u. Past participle is 'gesungen'.",
+    "TTS": "gesungen"
+  },
+  {
+    "LHS": "trinken (to drink) | Präteritum",
+    "RHS": "trank",
+    "remarks": "Vowel change: i -> a. Example: er trank",
+    "TTS": "er trank"
+  },
+  {
+    "LHS": "trinken (to drink) | Partizip II",
+    "RHS": "getrunken",
+    "remarks": "Vowel change: i -> u. Past participle is 'getrunken'.",
+    "TTS": "getrunken"
+  },
+  {
+    "LHS": "finden (to find) | Präteritum",
+    "RHS": "fand",
+    "remarks": "Vowel change: i -> a. Example: sie fand",
+    "TTS": "sie fand"
+  },
+  {
+    "LHS": "finden (to find) | Partizip II",
+    "RHS": "gefunden",
+    "remarks": "Vowel change: i -> u. Past participle is 'gefunden'.",
+    "TTS": "gefunden"
+  },
+  {
+    "LHS": "beginnen (to begin) | Präteritum",
+    "RHS": "begann",
+    "remarks": "Vowel change: i -> a. Example: es begann",
+    "TTS": "es begann"
+  },
+  {
+    "LHS": "beginnen (to begin) | Partizip II",
+    "RHS": "begonnen",
+    "remarks": "Vowel change: i -> u. Past participle is 'begonnen'.",
+    "TTS": "begonnen"
+  },
+  {
+    "LHS": "schwimmen (to swim) | Präteritum",
+    "RHS": "schwamm",
+    "remarks": "Vowel change: i -> a. Example: wir schwammen",
+    "TTS": "wir schwammen"
+  },
+  {
+    "LHS": "schwimmen (to swim) | Partizip II",
+    "RHS": "geschwommen",
+    "remarks": "Vowel change: i -> o. Past participle is 'geschwommen'. Note: Perfekt with 'sein'.",
+    "TTS": "geschwommen"
+  }
+]
