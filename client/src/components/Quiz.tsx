@@ -12,6 +12,11 @@ export function Quiz() {
   const [searchParams] = useSearchParams();
   const { setIsActionInProgress, setVimMode } = useVimMode();
 
+  // State for the quiz mode, 'srs' or 'practice'
+  const [quizMode] = useState<"srs" | "practice">(
+    (searchParams.get("mode") as "srs" | "practice") || "srs"
+  );
+
   const [initialWords, setInitialWords] = useState<Word[]>([]);
   const [initialStats, setInitialStats] = useState<WordStatsMap>({});
   const [settings, setSettings] = useState<AppSettings>(getDefaultSettings());
@@ -19,7 +24,6 @@ export function Quiz() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Reset the action and vim states at the beginning of every new quiz
     setIsActionInProgress(false);
     setVimMode("insert");
 
@@ -48,12 +52,11 @@ export function Quiz() {
           return;
         }
 
-        // Create a temporary WordList object for checksum calculation
         const tempWordList: WordList = {
-          id: "", // Not relevant for checksum calculation here
-          name: "", // Not relevant for checksum calculation here
+          id: "",
+          name: "",
           words: combinedWords,
-          checksum: "", // Will be calculated
+          checksum: "",
         };
         const checksum = await getWordListChecksum(tempWordList);
         const stats = await storage.loadStats(checksum);
@@ -71,7 +74,17 @@ export function Quiz() {
     loadInitialData();
   }, [searchParams, setIsActionInProgress, setVimMode]);
 
-  // Once initial data is loaded, the QuizEngine takes over
+  // Define the save function based on the quiz mode
+  const handleSaveStats = async (
+    checksum: string,
+    stats: WordStatsMap
+  ): Promise<void> => {
+    if (quizMode === "srs") {
+      await storage.saveStats(checksum, stats);
+    }
+    // In 'practice' mode, this function does nothing.
+  };
+
   if (isLoadingData) {
     return <div>Loading quiz...</div>;
   }
@@ -80,14 +93,14 @@ export function Quiz() {
     return <Navigate to="/quiz-selection" replace />;
   }
 
-  // The QuizEngineWrapper handles the actual quiz logic.
-  // This separation prevents re-triggering the initial data load.
   return (
     <QuizEngineWrapper
       initialWords={initialWords}
       initialStats={initialStats}
-      setIsActionInProgress={setIsActionInProgress}
       activePoolSize={settings.quiz.activePoolSize}
+      useEphemeralStats={quizMode === "practice"}
+      onSaveStats={handleSaveStats}
+      onAction={setIsActionInProgress}
     />
   );
 }
@@ -95,30 +108,39 @@ export function Quiz() {
 type QuizEngineWrapperProps = {
   initialWords: Word[];
   initialStats: WordStatsMap;
-  setIsActionInProgress: (inProgress: boolean) => void;
   activePoolSize: number;
+  useEphemeralStats: boolean;
+  onSaveStats: (checksum: string, stats: WordStatsMap) => Promise<void>;
+  onAction: (inProgress: boolean) => void;
 };
 
 function QuizEngineWrapper({
   initialWords,
   initialStats,
-  setIsActionInProgress,
   activePoolSize,
+  useEphemeralStats,
+  onSaveStats,
+  onAction,
 }: QuizEngineWrapperProps) {
   const {
     currentWord,
     isLoading: isEngineLoading,
     isFinished,
     submitAnswer,
-  } = useQuizEngine(
+  } = useQuizEngine({
     initialWords,
     initialStats,
-    setIsActionInProgress,
-    activePoolSize
-  );
+    activePoolSize,
+    useEphemeralStats,
+    onSaveStats,
+  });
 
   const handleNext = (isCorrect: boolean) => {
-    submitAnswer(isCorrect);
+    submitAnswer(isCorrect).then(() => {
+      // After the engine has processed the answer and is ready for the next
+      // word, we release the action lock.
+      onAction(false);
+    });
   };
 
   if (isEngineLoading) {
@@ -129,12 +151,12 @@ function QuizEngineWrapper({
     return (
       <div className="text-center">
         <h1 className="text-4xl font-bold">Quiz Finished!</h1>
+        {/* We can add a button here to restart in practice mode later */}
       </div>
     );
   }
 
   if (!currentWord) {
-    // This can happen if the list is empty or engine fails to select a word
     return <Navigate to="/quiz-selection" replace />;
   }
 

@@ -1,87 +1,112 @@
 // hooks/useQuizEngine.ts
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Word, WordStatsMap } from "../types";
 import * as quizEngine from "../quiz/engine";
-import { storage } from "../FS/Storage";
 import { getWordListChecksum } from "../lib";
 
-export function useQuizEngine(
-  initialWords: Word[],
-  initialStats: WordStatsMap,
-  setIsActionInProgress: (inProgress: boolean) => void,
-  activePoolSize: number
-) {
-  const [session, setSession] = useState(() =>
-    quizEngine.createQuizSession(initialWords, initialStats, activePoolSize)
-  );
+type UseQuizEngineProps = {
+  initialWords: Word[];
+  initialStats: WordStatsMap;
+  activePoolSize: number;
+  useEphemeralStats: boolean; // If true, starts a session with fresh stats
+  onSaveStats: (checksum: string, stats: WordStatsMap) => Promise<void>;
+};
+
+export function useQuizEngine({
+  initialWords,
+  initialStats,
+  activePoolSize,
+  useEphemeralStats,
+  onSaveStats,
+}: UseQuizEngineProps) {
+  const [session, setSession] = useState<quizEngine.QuizSession | null>(null);
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFinished, setIsFinished] = useState(false);
   const [wordlistChecksum, setWordlistChecksum] = useState<string | null>(null);
-  const isInitialized = useRef(false);
 
   useEffect(() => {
-    async function calculateChecksum() {
-      if (initialWords.length > 0) {
-        const checksum = await getWordListChecksum({
-          words: initialWords,
-          id: "", // Not relevant for this checksum calculation
-          name: "", // Not relevant for this checksum calculation
-          checksum: "", // Will be overwritten
-        });
-        setWordlistChecksum(checksum);
-      }
-    }
-    calculateChecksum();
-  }, [initialWords]);
-
-  // Initial word selection
-  useEffect(() => {
-    if (!isInitialized.current) {
-      const { nextWord, updatedSession } = quizEngine.getNextWord(session);
-      setSession(updatedSession);
-      setCurrentWord(nextWord);
-      setIsLoading(false);
-      isInitialized.current = true;
-    }
-  }, [session]); // Dependency is okay here, as it only runs once
-
-  const submitAnswer = useCallback(
-    async (isCorrect: boolean) => {
-      if (!currentWord || !wordlistChecksum) return;
-
-      const { updatedStats, updatedActivePool } = quizEngine.updateWordStats(
-        session,
-        currentWord,
-        isCorrect
-      );
-
-      const updatedSessionAfterStats = {
-        ...session,
-        stats: updatedStats,
-        activePool: updatedActivePool,
-      };
-
-      try {
-        await storage.saveStats(wordlistChecksum, updatedStats);
-      } catch (error) {
-        console.error("Failed to save stats:", error);
+    async function initialize() {
+      if (initialWords.length === 0) {
+        setIsLoading(false);
+        setIsFinished(true); // Nothing to quiz
+        return;
       }
 
-      const { nextWord, updatedSession } = quizEngine.getNextWord(
-        updatedSessionAfterStats
+      const sessionStats = useEphemeralStats ? {} : initialStats;
+      const newSession = quizEngine.createQuizSession(
+        initialWords,
+        sessionStats,
+        activePoolSize
       );
+      const { nextWord, updatedSession } = quizEngine.getNextWord(newSession);
 
-      setCurrentWord(nextWord);
       setSession(updatedSession);
-      setIsActionInProgress(false); // Reset the action lock for the new question
+      setCurrentWord(nextWord);
 
       if (!nextWord) {
         setIsFinished(true);
       }
+
+      const checksum = await getWordListChecksum({
+        words: initialWords,
+        id: "",
+        name: "",
+        checksum: "",
+      });
+      setWordlistChecksum(checksum);
+      setIsLoading(false);
+    }
+    initialize();
+  }, [initialWords, initialStats, activePoolSize, useEphemeralStats]);
+
+  const submitAnswer = useCallback(
+    async (isCorrect: boolean) => {
+      // We use a functional update to guarantee we are working with the latest session state.
+      // This prevents race conditions and stale state bugs.
+      setSession((prevSession) => {
+        if (!currentWord || !wordlistChecksum || !prevSession) {
+          return prevSession; // Should not happen, but a safe guard
+        }
+
+        const { updatedStats, updatedActivePool } = quizEngine.updateWordStats(
+          prevSession,
+          currentWord,
+          isCorrect
+        );
+
+        const sessionAfterUpdate = {
+          ...prevSession,
+          stats: updatedStats,
+          activePool: updatedActivePool,
+        };
+
+        // Saving stats is a side-effect, we can trigger it here.
+        // It's wrapped in a self-executing async function.
+        (async () => {
+          try {
+            await onSaveStats(wordlistChecksum, updatedStats);
+          } catch (error) {
+            console.error("The provided onSaveStats function failed:", error);
+          }
+        })();
+
+        const { nextWord, updatedSession } =
+          quizEngine.getNextWord(sessionAfterUpdate);
+
+        // Update the currentWord state for the UI
+        setCurrentWord(nextWord);
+
+        if (!nextWord) {
+          setIsFinished(true);
+        }
+
+        // Return the final, updated session state
+        return updatedSession;
+      });
     },
-    [currentWord, session, wordlistChecksum, setIsActionInProgress]
+    [currentWord, wordlistChecksum, onSaveStats] // session is no longer needed here
   );
 
   return {

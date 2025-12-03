@@ -40,13 +40,17 @@ export function QuizControls({ answer, onNext, remarks, tts }: Props) {
   const textToSpeak = tts || answer;
 
   useEffect(() => {
-    // This effect runs for every new question because the parent <QuizView> gives
-    // this component a new `key` prop, which forces a re-mount.
+    // This effect runs once when the component mounts, which happens for every
+    // new question because the parent <QuizView> gives it a new `key` prop.
+    console.log("Focusing");
     setIsActionInProgress(false);
     setVimMode("insert"); // Set vim mode to insert for the new question
     hasSpokenRef.current = false; // Reset speech guard
-    inputRef.current?.focus(); // Focus the input for the new question
-  }, [answer, setIsActionInProgress, setVimMode]); // `answer` is a stable dependency to trigger this effect for each new word
+    if (inputRef.current) {
+      console.log("Input ref found");
+    }
+    setTimeout(() => inputRef.current?.focus(), 100); // Focus the input for the new question
+  }, []); // Empty array ensures this runs once on mount
 
   useEffect(() => {
     if (

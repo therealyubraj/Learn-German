@@ -6,6 +6,7 @@ import type { Word, WordList } from "../types";
 export function QuizSelectionScreen() {
   const [wordLists, setWordLists] = useState<WordList[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
+  const [isPracticeMode, setIsPracticeMode] = useState(false); // State for practice mode
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,8 +33,11 @@ export function QuizSelectionScreen() {
     if (selectedListIds.length === 0) {
       return;
     }
-    const idParams = selectedListIds.join(",");
-    navigate(`/quiz?lists=${idParams}`);
+    let url = `/quiz?lists=${selectedListIds.join(",")}`;
+    if (isPracticeMode) {
+      url += "&mode=practice";
+    }
+    navigate(url);
   };
 
   const availableLists = wordLists.filter(
@@ -49,7 +53,9 @@ export function QuizSelectionScreen() {
 
       {/* View for Selected Lists */}
       <div className="p-4 border border-gray-700 rounded-md bg-gray-800 max-w-md mx-auto">
-        <h2 className="text-xl font-semibold mb-2 text-gray-100">Selected Quizzes</h2>
+        <h2 className="text-xl font-semibold mb-2 text-gray-100">
+          Selected Quizzes
+        </h2>
         {selectedLists.length > 0 ? (
           <div className="flex flex-wrap gap-2 justify-center">
             {selectedLists.map((list) => (
@@ -74,7 +80,12 @@ export function QuizSelectionScreen() {
 
       {/* Dropdown for available lists */}
       <div>
-        <label htmlFor="list-select" className="block mb-2 font-medium text-gray-300">Add a word list:</label>
+        <label
+          htmlFor="list-select"
+          className="block mb-2 font-medium text-gray-300"
+        >
+          Add a word list:
+        </label>
         <select
           id="list-select"
           className="w-full max-w-sm p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white mx-auto block"
@@ -83,7 +94,9 @@ export function QuizSelectionScreen() {
           disabled={availableLists.length === 0}
         >
           <option value="" disabled>
-            {availableLists.length > 0 ? "Select a list" : "No more lists available"}
+            {availableLists.length > 0
+              ? "Select a list"
+              : "No more lists available"}
           </option>
           {availableLists.map((list) => (
             <option key={list.id} value={list.id}>
@@ -91,6 +104,20 @@ export function QuizSelectionScreen() {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Practice Mode Checkbox */}
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <input
+          type="checkbox"
+          id="practice-mode"
+          checked={isPracticeMode}
+          onChange={(e) => setIsPracticeMode(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-700"
+        />
+        <label htmlFor="practice-mode" className="text-gray-300">
+          Free Practice Mode
+        </label>
       </div>
 
       {/* Start Quiz Button */}

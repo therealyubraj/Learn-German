@@ -113,6 +113,7 @@ export function getNextWord(
   }
 
   if (currentActivePool.length === 0) {
+    console.log("All words reviewed, quiz finished.");
     return {
       nextWord: null,
       updatedSession: { ...session, stats: currentStats },
