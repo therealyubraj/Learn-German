@@ -1,51 +1,15 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { storage } from "../FS/Storage";
-import type { Word, WordList } from "../types";
+import React from "react";
 
 export function QuizSelectionScreen() {
-  const [wordLists, setWordLists] = useState<WordList[]>([]);
-  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
-  const [isPracticeMode, setIsPracticeMode] = useState(false); // State for practice mode
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    async function fetchWordLists() {
-      const lists = await storage.getAllLists();
-      setWordLists(lists);
-    }
-    fetchWordLists();
-  }, []);
-
-  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newId = event.target.value;
-    if (newId && !selectedListIds.includes(newId)) {
-      setSelectedListIds((prev) => [...prev, newId]);
-    }
-    event.target.value = ""; // Reset dropdown after selection
-  };
-
-  const handleRemoveList = (idToRemove: string) => {
-    setSelectedListIds((prev) => prev.filter((id) => id !== idToRemove));
-  };
-
-  const handleStartQuiz = () => {
-    if (selectedListIds.length === 0) {
-      return;
-    }
-    let url = `/quiz?lists=${selectedListIds.join(",")}`;
-    if (isPracticeMode) {
-      url += "&mode=practice";
-    }
-    navigate(url);
-  };
-
-  const availableLists = wordLists.filter(
-    (list) => !selectedListIds.includes(list.id)
-  );
-  const selectedLists = wordLists.filter((list) =>
-    selectedListIds.includes(list.id)
-  );
+  const selectedLists = [
+    { id: "1", name: "A1 Vocabulary" },
+    { id: "2", name: "Common Verbs" },
+  ];
+  const availableLists = [
+    { id: "3", name: "B1 Nouns" },
+    { id: "4", name: "Adjectives" },
+  ];
+  const isPracticeMode = false;
 
   return (
     <div className="container mx-auto p-4 text-white text-center flex flex-col gap-8">
@@ -65,7 +29,6 @@ export function QuizSelectionScreen() {
               >
                 {list.name}
                 <button
-                  onClick={() => handleRemoveList(list.id)}
                   className="ml-2 text-white hover:text-red-300 focus:outline-none"
                 >
                   &times;
@@ -89,8 +52,6 @@ export function QuizSelectionScreen() {
         <select
           id="list-select"
           className="w-full max-w-sm p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white mx-auto block"
-          onChange={handleSelectChange}
-          value="" // Controlled component, reset value after selection
           disabled={availableLists.length === 0}
         >
           <option value="" disabled>
@@ -112,7 +73,7 @@ export function QuizSelectionScreen() {
           type="checkbox"
           id="practice-mode"
           checked={isPracticeMode}
-          onChange={(e) => setIsPracticeMode(e.target.checked)}
+          readOnly
           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-700"
         />
         <label htmlFor="practice-mode" className="text-gray-300">
@@ -123,9 +84,8 @@ export function QuizSelectionScreen() {
       {/* Start Quiz Button */}
       <div className="mt-8 flex justify-center">
         <button
-          onClick={handleStartQuiz}
           className="px-8 py-4 bg-green-700 text-white font-bold text-xl rounded-lg hover:bg-green-800 transition-colors duration-300 disabled:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={selectedListIds.length === 0}
+          disabled={selectedLists.length === 0}
         >
           Start Quiz
         </button>

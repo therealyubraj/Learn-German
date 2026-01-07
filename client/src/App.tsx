@@ -6,9 +6,6 @@ import { Navbar } from "./components/Navbar";
 import { Quiz } from "./components/Quiz";
 import { QuizSelectionScreen } from "./components/QuizSelectionScreen";
 import { Settings } from "./components/Settings";
-import { VimModeProvider } from "./contexts/VimModeContext";
-import { TTSProvider } from "./contexts/TTSContext";
-import { NavigationProvider } from "./contexts/NavigationContext";
 
 function Home() {
   return (
@@ -18,6 +15,7 @@ function Home() {
         <Link to={"/import"}>Add word list</Link>
         <Link to={"/quiz-selection"}>Quiz</Link>
         <Link to={"/settings"}>Settings</Link>
+        <Link to={"/opfs"}>OPFS</Link>
       </div>
     </div>
   );
@@ -25,23 +23,17 @@ function Home() {
 
 function App() {
   return (
-    <VimModeProvider>
-      <TTSProvider>
-        <NavigationProvider>
-          <div className="relative flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/import" element={<UserImport />} />
-              <Route path="/opfs" element={<OPFSExplorer />} />
-              <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
-              <Route path="/quiz" element={<Quiz />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </div>
-        </NavigationProvider>
-      </TTSProvider>
-    </VimModeProvider>
+    <div className="relative flex flex-col items-center justify-center w-full h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/import" element={<UserImport />} />
+        <Route path="/opfs" element={<OPFSExplorer />} />
+        <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
+        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
+    </div>
   );
 }
 
