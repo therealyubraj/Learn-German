@@ -223,9 +223,19 @@ export interface TTSSettings {
 
 ## Development Status
 
-The Origin Private File System (OPFS) integration, including file listing, viewing, and deletion, has been successfully re-implemented with a cleaner architecture and more robust code. The user settings, including VIM mode toggle, TTS voice selection, and quiz settings, have also been reimplemented using a React Context for state management and now include persistence to OPFS. The word import functionality has been updated to be more robust, including file-based imports and automatic naming.
+The foundational work for the application is largely complete. This includes:
+- **OPFS Integration**: A robust service for file system operations is in place.
+- **Settings Management**: User settings for TTS and VIM mode are implemented with persistence in OPFS.
+- **Word List Management**: Users can import and manage word lists, which are saved via OPFS.
+- **Basic Quiz UI**: The main components for the quiz interface (`QuizView`, `QuizControls`) are built and functional, though the word selection logic is currently random.
 
-The UI/UX features for Word List Management (creation via JSON), User Settings (VIM Mode, TTS Voice Selection), and the foundational components for the Quiz Flow and Next Question Selection Algorithm are now in place. The next phase of development will focus on fully implementing the main quiz feature itself, including the Quiz Flow with TTS integration and the Spaced Repetition Algorithm.
+## Next Steps
+
+With the basic infrastructure in place, the next phase of development will focus on two key areas to enhance the core learning experience:
+
+1.  **Implement Spaced Repetition Algorithm**: The current quiz engine selects words randomly. This will be replaced with the spaced repetition algorithm detailed above to create an intelligent learning queue that prioritizes words the user struggles with and schedules reviews for mastered words at increasing intervals.
+
+2.  **Integrate VIM Mode in Quiz Controls**: The VIM mode context and functionality exist but need to be fully integrated into the `QuizControls.tsx` component. This involves adding `data-vim-key` attributes to the buttons (`Check answer`, `Give up`, `Next question`) and ensuring the global key listener correctly triggers their actions in `Normal Mode`.
 
 This section outlines the detailed plan for the spaced repetition algorithm used to select words for the quiz, ensuring a balanced approach to learning new vocabulary and reviewing mastered terms.
 
@@ -298,4 +308,4 @@ export type WordStatsMap = {
 *   This new word will then be eligible to fill slots in the active pool.
 
 **Persistence:**
-*   After every word stat update, the entire `WordStatsMap` will be saved back to its corresponding OPFS JSON file (`stats/<wordlist_checksum>.json`) to ensure data is never lost.\n## Current State Summary\n\nAll application logic has been removed from the `client/src` directory. UI components (`.tsx` files in `client/src/components`), `App.tsx`, and `main.tsx` have been stripped down to their pure presentational (JSX and CSS) structure.\nCore logic directories (`client/src/contexts`, `client/src/settings`, `client/src/tts`) and the `client/src/types.ts` file have been deleted.\n\nThe user has indicated they have made additional changes on their end to prepare for a rewrite and will now be using me as a "helper filler" to implement specific code sections as needed.
+*   After every word stat update, the entire `WordStatsMap` will be saved back to its corresponding OPFS JSON file (`stats/<wordlist_checksum>.json`) to ensure data is never lost.

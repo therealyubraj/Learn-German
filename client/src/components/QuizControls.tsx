@@ -92,6 +92,7 @@ export function QuizControls({
           className={buttonStyles.base}
           onClick={handlePlaySound}
           disabled={controlState === "guessing" || isSpeaking}
+          data-vim-key="s"
         >
           🔊
         </button>
@@ -99,12 +100,12 @@ export function QuizControls({
       <p className="text-gray-300 text-lg mt-2 text-center">
         {controlState !== "guessing" && item.remarks}
       </p>
-      <div>Insert</div>
       <div className="flex gap-4">
         <button
           className={buttonStyles.base}
           onClick={handleCheckAnswer}
           disabled={controlState !== "guessing" || isSpeaking}
+          data-vim-key="Enter"
         >
           Check answer
         </button>
@@ -112,6 +113,7 @@ export function QuizControls({
           className={buttonStyles.base}
           onClick={handleGiveUp}
           disabled={controlState !== "guessing" || isSpeaking}
+          data-vim-key="g"
         >
           Give up
         </button>
@@ -119,6 +121,7 @@ export function QuizControls({
           className={buttonStyles.base}
           onClick={handleNextQuestion}
           disabled={controlState === "guessing" || isSpeaking}
+          data-vim-key="n"
         >
           Next question
         </button>
