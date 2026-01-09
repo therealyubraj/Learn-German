@@ -1,15 +1,45 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getAllWordListMetadata } from "../FS/utils";
+import { useNavigate } from "react-router-dom";
 
+type QuizItem = {
+  name: string;
+};
 export function QuizSelectionScreen() {
-  const selectedLists = [
-    { id: "1", name: "A1 Vocabulary" },
-    { id: "2", name: "Common Verbs" },
-  ];
-  const availableLists = [
-    { id: "3", name: "B1 Nouns" },
-    { id: "4", name: "Adjectives" },
-  ];
-  const isPracticeMode = false;
+  const [selectedItems, setSelectedItems] = useState<Array<QuizItem>>([]);
+  const [availableItems, setAvailableItems] = useState<Array<QuizItem>>([]);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function populateList() {
+      const allItems = await getAllWordListMetadata();
+      setAvailableItems(allItems.map((x) => ({ name: x.name })));
+    }
+
+    populateList();
+  }, []);
+
+  function handleNewSelection(event: React.ChangeEvent<HTMLSelectElement>) {
+    // Placeholder for future implementation
+    setSelectedItems([...selectedItems, { name: event.target.value }]);
+    setAvailableItems(
+      availableItems.filter((x) => x.name !== event.target.value)
+    );
+
+    console.log("List selected:", event.target.value);
+  }
+
+  function handleItemRemoval(name: string) {
+    setSelectedItems(selectedItems.filter((x) => x.name !== name));
+    setAvailableItems([...availableItems, { name }]);
+  }
+
+  function handleQuizStart() {
+    navigate("/quiz", {
+      state: { selectedQuizzes: selectedItems.map((x) => x.name) },
+    });
+  }
 
   return (
     <div className="container mx-auto p-4 text-white text-center flex flex-col gap-8">
@@ -20,16 +50,17 @@ export function QuizSelectionScreen() {
         <h2 className="text-xl font-semibold mb-2 text-gray-100">
           Selected Quizzes
         </h2>
-        {selectedLists.length > 0 ? (
+        {selectedItems.length > 0 ? (
           <div className="flex flex-wrap gap-2 justify-center">
-            {selectedLists.map((list) => (
+            {selectedItems.map((item) => (
               <span
-                key={list.id}
+                key={item.name}
                 className="flex items-center bg-blue-600 text-white text-sm px-3 py-1 rounded-full"
               >
-                {list.name}
+                {item.name}
                 <button
                   className="ml-2 text-white hover:text-red-300 focus:outline-none"
+                  onClick={() => handleItemRemoval(item.name)}
                 >
                   &times;
                 </button>
@@ -41,51 +72,36 @@ export function QuizSelectionScreen() {
         )}
       </div>
 
-      {/* Dropdown for available lists */}
       <div>
-        <label
-          htmlFor="list-select"
-          className="block mb-2 font-medium text-gray-300"
-        >
-          Add a word list:
+        <label className="block mb-2 font-medium text-gray-300">
+          Add quizzes
         </label>
         <select
-          id="list-select"
+          id="quiz-select"
           className="w-full max-w-sm p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white mx-auto block"
-          disabled={availableLists.length === 0}
+          disabled={availableItems.length === 0}
+          onChange={handleNewSelection}
+          value={""}
         >
           <option value="" disabled>
-            {availableLists.length > 0
-              ? "Select a list"
-              : "No more lists available"}
+            {availableItems.length > 0
+              ? "Select a Quiz"
+              : "No more quizzes available"}
           </option>
-          {availableLists.map((list) => (
-            <option key={list.id} value={list.id}>
-              {list.name}
+          {availableItems.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.name}
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Practice Mode Checkbox */}
-      <div className="flex items-center justify-center gap-2 mt-4">
-        <input
-          type="checkbox"
-          id="practice-mode"
-          checked={isPracticeMode}
-          readOnly
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-700"
-        />
-        <label htmlFor="practice-mode" className="text-gray-300">
-          Free Practice Mode
-        </label>
       </div>
 
       {/* Start Quiz Button */}
       <div className="mt-8 flex justify-center">
         <button
           className="px-8 py-4 bg-green-700 text-white font-bold text-xl rounded-lg hover:bg-green-800 transition-colors duration-300 disabled:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={selectedLists.length === 0}
+          disabled={selectedItems.length === 0}
+          onClick={handleQuizStart}
         >
           Start Quiz
         </button>

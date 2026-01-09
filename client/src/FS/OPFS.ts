@@ -1,177 +1,146 @@
-import { computeChecksum } from "../hash";
-import type { WordList, WordStatsMap } from "../types";
-import { IStorageProvider } from "./IStorageProvider";
-
-const WORDS_DIR = "wordlists";
-const STATS_DIR = "stats";
+import { IStorageProvider, LSResponse } from "./IStorageProvider";
 
 export class OPFS extends IStorageProvider {
-  private async getWordsDirHandle(): Promise<FileSystemDirectoryHandle> {
-    if (!navigator.storage || !navigator.storage.getDirectory) {
-      throw new Error("OPFS API is not supported in this browser environment.");
-    }
-
-    const root = await navigator.storage.getDirectory();
-    return root.getDirectoryHandle(WORDS_DIR, { create: true });
-  }
-
-  private async getStatsDirHandle(): Promise<FileSystemDirectoryHandle> {
-    if (!navigator.storage || !navigator.storage.getDirectory) {
-      throw new Error("OPFS API is not supported in this browser environment.");
-    }
-
-    const root = await navigator.storage.getDirectory();
-    return root.getDirectoryHandle(STATS_DIR, { create: true });
-  }
-
-  async addNewList(wordList: WordList): Promise<void> {
-    const jsonStr = JSON.stringify(wordList);
-    const filename = wordList.id;
-
+  private async getFileHandle(
+    path: string,
+    options: { create?: boolean } = {}
+  ): Promise<FileSystemFileHandle | null> {
     try {
-      const dirHandle = await this.getWordsDirHandle();
-      const fileHandle = await dirHandle.getFileHandle(`${filename}.json`, {
-        create: true,
-      });
-      const writable = await fileHandle.createWritable();
-
-      console.log("Writing to file");
-      console.log(jsonStr);
-      await writable.write(jsonStr);
-      await writable.close();
-
-      console.log(`Successfully saved new list: ${filename}.json`);
-    } catch (error) {
-      console.error("Failed to save list to OPFS:", error);
-      throw new Error("Could not save the list to local storage.");
-    }
-  }
-
-  async getAllListChecksums(): Promise<Array<string>> {
-    const checksums: string[] = [];
-
-    try {
-      const dirHandle = await this.getWordsDirHandle();
-
-      //@ts-ignore
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind === "file" && entry.name.endsWith(".json")) {
-          const file = await entry.getFile();
-          const content = await file.text();
-          const wordList: WordList = JSON.parse(content);
-          checksums.push(wordList.checksum);
-        }
-      }
-
-      console.log(`Found ${checksums.length} existing lists.`);
-      return checksums;
-    } catch (error) {
-      if (error instanceof Error && error.name === "NotFoundError") {
-        return [];
-      }
-      console.error("Failed to read lists from OPFS:", error);
-      return [];
-    }
-  }
-
-  async getAllLists(): Promise<Array<WordList>> {
-    const lists: WordList[] = [];
-
-    try {
-      const dirHandle = await this.getWordsDirHandle();
-
-      //@ts-ignore
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind === "file" && entry.name.endsWith(".json")) {
-          const file = await entry.getFile();
-          const content = await file.text();
-          const wordList: WordList = JSON.parse(content);
-          lists.push(wordList);
-        }
-      }
-
-      console.log(`Found ${lists.length} existing lists.`);
-      return lists;
-    } catch (error) {
-      if (error instanceof Error && error.name === "NotFoundError") {
-        return [];
-      }
-      console.error("Failed to read lists from OPFS:", error);
-      return [];
-    }
-  }
-
-  async getListById(id: string): Promise<WordList | null> {
-    try {
-      const dirHandle = await this.getWordsDirHandle();
-      const fileHandle = await dirHandle.getFileHandle(`${id}.json`);
-      const file = await fileHandle.getFile();
-      const content = await file.text();
-      return JSON.parse(content);
-    } catch (error) {
-      if (error instanceof Error && error.name === "NotFoundError") {
+      if (!navigator.storage.getDirectory) {
+        console.error("OPFS is not supported in this browser.");
         return null;
       }
-      console.error(`Failed to read list with id "${id}" from OPFS:`, error);
+      const root = await navigator.storage.getDirectory();
+      const pathSegments = path.split("/").filter((p) => p);
+      const fileName = pathSegments.pop();
+
+      if (!fileName) {
+        console.error("Invalid path provided. No filename.");
+        return null;
+      }
+
+      let currentDir = root;
+      for (const segment of pathSegments) {
+        currentDir = await currentDir.getDirectoryHandle(segment, options);
+      }
+
+      return await currentDir.getFileHandle(fileName, options);
+    } catch (error) {
+      if ((error as DOMException).name !== "NotFoundError") {
+        console.error(`[OPFS] Error accessing handle for ${path}:`, error);
+      }
       return null;
     }
   }
 
-  async writeFile(path: string, content: string): Promise<void> {
+  private async getDirectoryHandle(
+    path: string,
+    options: { create?: boolean } = {}
+  ): Promise<FileSystemDirectoryHandle | null> {
     try {
+      if (!navigator.storage.getDirectory) {
+        console.error("OPFS is not supported in this browser.");
+        return null;
+      }
       const root = await navigator.storage.getDirectory();
-      const fileHandle = await root.getFileHandle(path, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(content);
-      await writable.close();
+      const pathSegments = path.split("/").filter((p) => p);
+
+      let currentDir = root;
+      for (const segment of pathSegments) {
+        currentDir = await currentDir.getDirectoryHandle(segment, options);
+      }
+      return currentDir;
     } catch (error) {
-      console.error(`Failed to write file "${path}" to OPFS:`, error);
-      throw error;
+      if ((error as DOMException).name !== "NotFoundError") {
+        console.error(
+          `[OPFS] Error accessing directory handle for ${path}:`,
+          error
+        );
+      }
+      return null;
     }
   }
 
-  async readFile(path: string): Promise<string | null> {
+  async ls(path: string): Promise<LSResponse> {
+    const result: LSResponse = [];
     try {
-      const root = await navigator.storage.getDirectory();
-      const fileHandle = await root.getFileHandle(path);
+      const dirHandle = await this.getDirectoryHandle(path);
+      if (!dirHandle) {
+        return result;
+      }
+
+      for await (const [name, handle] of (dirHandle as any).entries()) {
+        result.push({
+          name,
+          type: handle.kind === "file" ? "file" : "dir",
+        });
+      }
+    } catch (error) {
+      console.error(`[OPFS] Error listing directory ${path}:`, error);
+    }
+    return result;
+  }
+
+  async readFile(path: string): Promise<string> {
+    try {
+      const fileHandle = await this.getFileHandle(path);
+      if (!fileHandle) {
+        throw new Error(`No such file. ${path}`);
+      }
       const file = await fileHandle.getFile();
       return await file.text();
     } catch (error) {
-      if (error instanceof Error && error.name === 'NotFoundError') {
-        return null;
-      }
-      console.error(`Failed to read file "${path}" from OPFS:`, error);
       throw error;
     }
   }
 
-  async saveStats(checksum: string, stats: WordStatsMap): Promise<void> {
-    const jsonStr = JSON.stringify(stats);
+  async deleteFile(path: string): Promise<boolean> {
     try {
-      const dirHandle = await this.getStatsDirHandle();
-      const fileHandle = await dirHandle.getFileHandle(`${checksum}.json`, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(jsonStr);
-      await writable.close();
+      const pathSegments = path.split("/").filter((p) => p);
+      const fileName = pathSegments.pop();
+
+      if (!fileName) {
+        console.error("Invalid path provided. No filename.");
+        return false;
+      }
+
+      const dirPath = pathSegments.join("/");
+      const dirHandle = await this.getDirectoryHandle(dirPath);
+      if (!dirHandle) {
+        return false;
+      }
+
+      await dirHandle.removeEntry(fileName);
+      return true;
     } catch (error) {
-      console.error(`Failed to save stats for checksum "${checksum}" to OPFS:`, error);
-      throw new Error("Could not save the stats to local storage.");
+      console.error(`[OPFS] Error deleting file ${path}:`, error);
+      return false;
     }
   }
 
-  async loadStats(checksum: string): Promise<WordStatsMap | null> {
+  async writeFile(path: string, content: string): Promise<boolean> {
     try {
-      const dirHandle = await this.getStatsDirHandle();
-      const fileHandle = await dirHandle.getFileHandle(`${checksum}.json`);
-      const file = await fileHandle.getFile();
-      const content = await file.text();
-      return JSON.parse(content);
-    } catch (error) {
-      if (error instanceof Error && error.name === "NotFoundError") {
-        return null;
+      const fileHandle = await this.getFileHandle(path, { create: true });
+      if (!fileHandle) {
+        return false;
       }
-      console.error(`Failed to read stats for checksum "${checksum}" from OPFS:`, error);
-      return null;
+      const writable = await fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return true;
+    } catch (error) {
+      console.error(`[OPFS] Error writing file ${path}:`, error);
+      return false;
+    }
+  }
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      const handle = await this.getFileHandle(path);
+      return handle !== null;
+    } catch (error) {
+      console.error(`[OPFS] Error checking existence of ${path}:`, error);
+      return false;
     }
   }
 }

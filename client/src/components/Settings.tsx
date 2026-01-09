@@ -1,16 +1,36 @@
-import React from "react";
+import { useSettings } from "../contexts/SettingsContext";
+import { useState, useEffect } from "react";
+import { tts } from "../tts/tts";
+import { saveSettings } from "../FS/utils"; // Import saveSettings
 
 export function Settings() {
-  const isVimModeEnabled = false;
-  const activePoolSize = 20;
-  const pitch = 1;
-  const speed = 1;
-  const volume = 1;
-  const previewText = "Hello! This is my voice";
-  const languages = ["en-US", "de-DE"];
-  const filteredVoices = ["Default"];
-  const selectedLanguage = "en-US";
-  const selectedVoice = "Default";
+  const { settings, setSettings } = useSettings();
+  const { vim, quiz, tts: ttsSettings } = settings;
+  const { pitch, rate: speed, volume, voiceName } = ttsSettings;
+
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [previewText, setPreviewText] = useState(
+    "Hallo! Das ist meine Stimme!"
+  );
+
+  useEffect(() => {
+    const availableVoices = tts.getVoices();
+    setVoices(availableVoices.filter((v) => v.lang.startsWith("de")));
+  }, []);
+
+  const handlePreview = () => {
+    tts.speak(previewText, { ...ttsSettings });
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await saveSettings(settings);
+      alert("Settings saved successfully!"); // Simple feedback
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      alert("Failed to save settings."); // Simple feedback
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 text-white">
@@ -30,17 +50,25 @@ export function Settings() {
                 type="checkbox"
                 id="vim-toggle"
                 className="sr-only"
-                checked={isVimModeEnabled}
-                readOnly
+                checked={vim.enabled}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    vim: {
+                      ...settings.vim,
+                      enabled: e.target.checked,
+                    },
+                  })
+                }
               />
               <div
                 className={`block w-14 h-8 rounded-full transition ${
-                  isVimModeEnabled ? "bg-blue-600" : "bg-gray-600"
+                  vim.enabled ? "bg-blue-600" : "bg-gray-600"
                 }`}
               ></div>
               <div
                 className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
-                  isVimModeEnabled ? "transform translate-x-6" : ""
+                  vim.enabled ? "transform translate-x-6" : ""
                 }`}
               ></div>
             </div>
@@ -60,14 +88,22 @@ export function Settings() {
             htmlFor="active-pool-size-input"
             className="block mb-2 font-medium text-gray-300"
           >
-            Active Pool Size: {activePoolSize}
+            Active Pool Size: {quiz.poolSize}
           </label>
           <input
             type="number"
             id="active-pool-size-input"
             className="w-full p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white"
-            value={activePoolSize}
-            readOnly
+            value={quiz.poolSize}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                quiz: {
+                  ...quiz,
+                  poolSize: parseInt(e.target.value, 10),
+                },
+              })
+            }
             min="1"
             max="100"
           />
@@ -79,28 +115,7 @@ export function Settings() {
           Voice Settings
         </h2>
 
-        {/* Language and Voice Selectors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label
-              htmlFor="lang-select"
-              className="block mb-2 font-medium text-gray-300"
-            >
-              Language
-            </label>
-            <select
-              id="lang-select"
-              className="w-full p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white"
-              value={selectedLanguage}
-              readOnly
-            >
-              {languages.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
           <div>
             <label
               htmlFor="voice-select"
@@ -111,20 +126,24 @@ export function Settings() {
             <select
               id="voice-select"
               className="w-full p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white"
-              value={selectedVoice}
-              readOnly
-              disabled={filteredVoices.length === 0}
+              value={voiceName || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  tts: { ...ttsSettings, voiceName: e.target.value },
+                })
+              }
+              disabled={voices.length === 0}
             >
-              {filteredVoices.map((voice) => (
-                <option key={voice} value={voice}>
-                  {voice}
+              {voices.map((voice) => (
+                <option key={voice.name} value={voice.name}>
+                  {voice.name} ({voice.lang})
                 </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Sliders */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div>
             <label
@@ -140,7 +159,12 @@ export function Settings() {
               max="2"
               step="0.1"
               value={pitch}
-              readOnly
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  tts: { ...ttsSettings, pitch: parseFloat(e.target.value) },
+                })
+              }
               className="w-full"
             />
           </div>
@@ -158,7 +182,12 @@ export function Settings() {
               max="2"
               step="0.1"
               value={speed}
-              readOnly
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  tts: { ...ttsSettings, rate: parseFloat(e.target.value) },
+                })
+              }
               className="w-full"
             />
           </div>
@@ -176,13 +205,17 @@ export function Settings() {
               max="1"
               step="0.1"
               value={volume}
-              readOnly
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  tts: { ...ttsSettings, volume: parseFloat(e.target.value) },
+                })
+              }
               className="w-full"
             />
           </div>
         </div>
 
-        {/* Preview Text */}
         <div className="mb-4">
           <label
             htmlFor="preview-text"
@@ -195,11 +228,12 @@ export function Settings() {
             rows={3}
             className="w-full p-2 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white"
             value={previewText}
-            readOnly
+            onChange={(e) => setPreviewText(e.target.value)}
           ></textarea>
         </div>
 
         <button
+          onClick={handlePreview}
           className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors duration-300"
         >
           Preview Voice
@@ -208,6 +242,7 @@ export function Settings() {
 
       <div className="mt-6 flex justify-end">
         <button
+          onClick={handleSaveSettings}
           className={`px-6 py-2 font-semibold rounded-md transition-colors duration-300 bg-purple-600 hover:bg-purple-700 text-white`}
         >
           Save Settings

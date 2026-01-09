@@ -223,11 +223,9 @@ export interface TTSSettings {
 
 ## Development Status
 
-Most UI/UX features, including Word List Management (creation via JSON), User Settings (VIM Mode, TTS Voice Selection with dirty check), and basic Quiz Flow with TTS integration, and the Next Question Selection Algorithm (spaced repetition) have been largely completed.
+The Origin Private File System (OPFS) integration, including file listing, viewing, and deletion, has been successfully re-implemented with a cleaner architecture and more robust code. The user settings, including VIM mode toggle, TTS voice selection, and quiz settings, have also been reimplemented using a React Context for state management and now include persistence to OPFS. The word import functionality has been updated to be more robust, including file-based imports and automatic naming.
 
-
-
-#### Next Question Selection Algorithm Details
+The UI/UX features for Word List Management (creation via JSON), User Settings (VIM Mode, TTS Voice Selection), and the foundational components for the Quiz Flow and Next Question Selection Algorithm are now in place. The next phase of development will focus on fully implementing the main quiz feature itself, including the Quiz Flow with TTS integration and the Spaced Repetition Algorithm.
 
 This section outlines the detailed plan for the spaced repetition algorithm used to select words for the quiz, ensuring a balanced approach to learning new vocabulary and reviewing mastered terms.
 
@@ -300,4 +298,4 @@ export type WordStatsMap = {
 *   This new word will then be eligible to fill slots in the active pool.
 
 **Persistence:**
-*   After every word stat update, the entire `WordStatsMap` will be saved back to its corresponding OPFS JSON file (`stats/<wordlist_checksum>.json`) to ensure data is never lost.
+*   After every word stat update, the entire `WordStatsMap` will be saved back to its corresponding OPFS JSON file (`stats/<wordlist_checksum>.json`) to ensure data is never lost.\n## Current State Summary\n\nAll application logic has been removed from the `client/src` directory. UI components (`.tsx` files in `client/src/components`), `App.tsx`, and `main.tsx` have been stripped down to their pure presentational (JSX and CSS) structure.\nCore logic directories (`client/src/contexts`, `client/src/settings`, `client/src/tts`) and the `client/src/types.ts` file have been deleted.\n\nThe user has indicated they have made additional changes on their end to prepare for a rewrite and will now be using me as a "helper filler" to implement specific code sections as needed.
