@@ -1,5 +1,6 @@
 import { defaultSettings } from "../contexts/SettingsContext";
 import { computeChecksum } from "../hash";
+import { getInitStats } from "../quiz/engine";
 import {
   AppSettings,
   QuizItem,
@@ -137,10 +138,7 @@ export async function getStatFromChecksum(
   const initStats: QuizStat = {};
 
   for (const word of allWords) {
-    initStats[getQuizItemKey(word)] = {
-      correct: 0,
-      incorrect: 0,
-    };
+    initStats[getQuizItemKey(word)] = getInitStats();
   }
 
   await storage.writeFile(filename, JSON.stringify(initStats));

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useState } from "react";
 import { tts } from "../tts/tts";
 import { QuizItem } from "../types";
 import { useSettings } from "../contexts/SettingsContext";
@@ -86,6 +86,12 @@ export function QuizControls({
           value={inputValue}
           onChange={(evt) => {
             setInputValue(evt.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && controlState === "guessing") {
+              e.preventDefault();
+              handleCheckAnswer();
+            }
           }}
         />
         <button

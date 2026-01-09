@@ -33,8 +33,9 @@ export type AppSettings = {
 };
 
 export type WordStat = {
-  correct: number;
-  incorrect: number;
+  mastery: number;
+  successCount: number;
+  lastReviewed: number;
 };
 
 export type QuizStat = {

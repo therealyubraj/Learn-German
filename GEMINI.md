@@ -227,85 +227,18 @@ The foundational work for the application is largely complete. This includes:
 - **OPFS Integration**: A robust service for file system operations is in place.
 - **Settings Management**: User settings for TTS and VIM mode are implemented with persistence in OPFS.
 - **Word List Management**: Users can import and manage word lists, which are saved via OPFS.
+- **VIM Mode**: A global, decoupled VIM mode for keyboard navigation is now fully implemented and synchronized with the UI.
 - **Basic Quiz UI**: The main components for the quiz interface (`QuizView`, `QuizControls`) are built and functional, though the word selection logic is currently random.
 
 ## Next Steps
 
-With the basic infrastructure in place, the next phase of development will focus on two key areas to enhance the core learning experience:
+With the core infrastructure and UI behavior in place, the project's primary focus shifts to the learning logic itself:
 
-1.  **Implement Spaced Repetition Algorithm**: The current quiz engine selects words randomly. This will be replaced with the spaced repetition algorithm detailed above to create an intelligent learning queue that prioritizes words the user struggles with and schedules reviews for mastered words at increasing intervals.
+1.  **Implement Spaced Repetition Algorithm**: The current quiz engine selects words randomly. This will be replaced with the spaced repetition algorithm detailed below to create an intelligent learning queue that prioritizes words the user struggles with and schedules reviews for mastered words at increasing intervals.
 
-2.  **Integrate VIM Mode in Quiz Controls**: The VIM mode context and functionality exist but need to be fully integrated into the `QuizControls.tsx` component. This involves adding `data-vim-key` attributes to the buttons (`Check answer`, `Give up`, `Next question`) and ensuring the global key listener correctly triggers their actions in `Normal Mode`.
+2.  **Integrate VIM Mode in Quiz Controls (Completed)**: The VIM mode context and functionality now exist and are fully integrated, handling focus and state changes globally without coupling with UI components.
 
-This section outlines the detailed plan for the spaced repetition algorithm used to select words for the quiz, ensuring a balanced approach to learning new vocabulary and reviewing mastered terms.
-
-**Core Concepts:**
-*   **Word Stats:** Each word in a word list will have its individual learning statistics tracked.
-*   **Mastery Levels (Buckets):** Words are assigned a `level` (e.g., 1 to 8), indicating the user's mastery. New words start at Level 1, and higher levels indicate better retention.
-*   **Active Pool:** The quiz will present words drawn from a small, manageable `active pool` of words, intelligently constructed to focus user effort.
-*   **Review Intervals:** Words will be scheduled for review based on their `level`, with progressively longer intervals for higher mastery levels.
-
-**Data Structure for Word Statistics (`client/src/types.ts`):**
-```typescript
-export interface WordStats {
-  level: number;       // Mastery level, e.g., 1-8
-  lastReviewedAt: number; // Timestamp of the last review (milliseconds since epoch)
-  nextReviewAt: number;   // Timestamp for the next scheduled review (milliseconds since epoch)
-  createdAt: number;     // Timestamp when the word was first introduced (milliseconds since epoch)
-}
-
-export type WordStatsMap = {
-  [wordIdentifier: string]: WordStats; // `wordIdentifier` is LHS + '|' + RHS
-};
-```
-*   The `WordStatsMap` will be stored as a single JSON file in OPFS: `stats/<wordlist_checksum>.json`.
-
-**Review Intervals:**
-*   The `level` dictates the time until the next review. These intervals are configurable:
-    | Level | Next Review Interval |
-    | :---- | :------------------- |
-    | 1     | 4 Hours              |
-    | 2     | 8 Hours              |
-    | 3     | 1 Day                |
-    | 4     | 3 Days               |
-    | 5     | 1 Week               |
-    | 6     | 2 Weeks              |
-    | 7     | 1 Month              |
-    | 8     | 4 Months             |
-
-**Algorithm Steps:**
-
-**A. Building/Maintaining the Active Pool (Target Size: e.g., 20 words):**
-*   This process runs whenever the active pool needs words.
-1.  **Find "Due" Words:** Identify all words in the `WordStatsMap` where `nextReviewAt <= Date.now()`.
-2.  **Prioritize:** Sort these "due" words, prioritizing those with the **lowest `level`** first. This ensures struggling words are addressed.
-3.  **Fill the Pool:** Add the highest-priority "due" words to the active pool until it reaches its target size.
-
-**B. Selecting the Next Question *from* the Pool:**
-*   A word will be chosen **randomly** from the current active pool to present to the user. This keeps the quiz unpredictable and engaging.
-
-**C. Updating Word Stats After Each Answer:**
-
-*   **If the answer is CORRECT:**
-    1.  Increment `word.level` by 1 (up to a maximum of 8).
-    2.  Set `word.lastReviewedAt = Date.now()`.
-    3.  Calculate `word.nextReviewAt = Date.now() + intervalForLevel(word.level)`.
-    4.  The word is **removed from the active pool** as it is no longer immediately "due".
-
-*   **If the answer is INCORRECT:**
-    1.  **Penalty:** Decrease `word.level` by 2 (with a minimum level of 1). This reschedules the word for earlier review.
-    2.  Set `word.lastReviewedAt = Date.now()`.
-    3.  Calculate `word.nextReviewAt = Date.now() + intervalForLevel(word.level)` (based on the new, lower level).
-    4.  The word **remains in the active pool** since it requires further attention.
-
-**D. How New Words are Introduced:**
-*   When a word is encountered for the first time (no existing `WordStats` entry):
-    *   A new `WordStats` entry is created with:
-        *   `level: 1`
-        *   `lastReviewedAt: Date.now()`
-        *   `nextReviewAt: Date.now()` (making it immediately eligible for the pool)
-        *   `createdAt: Date.now()`
-*   This new word will then be eligible to fill slots in the active pool.
+For a detailed explanation of the spaced repetition algorithm, including data structures, review intervals, and step-by-step logic for managing the active pool and updating word statistics, please refer to [algorith.txt](algorith.txt).
 
 **Persistence:**
 *   After every word stat update, the entire `WordStatsMap` will be saved back to its corresponding OPFS JSON file (`stats/<wordlist_checksum>.json`) to ensure data is never lost.

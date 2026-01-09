@@ -27,7 +27,6 @@ export function Quiz() {
 
     // and get a new word and rerender
     const newItem = selectNextWord(
-      quiz.current.checksum,
       quiz.current.words,
       quiz.current.stats,
       currentItem
@@ -52,13 +51,7 @@ export function Quiz() {
       );
 
       quiz.current = fetchedQuiz;
-      setCurrentItem(
-        selectNextWord(
-          fetchedQuiz.checksum,
-          fetchedQuiz.words,
-          quiz.current.stats
-        )
-      );
+      setCurrentItem(selectNextWord(fetchedQuiz.words, quiz.current.stats));
     }
     fetchAndSetWordLists();
   }, []);
