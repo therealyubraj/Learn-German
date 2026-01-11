@@ -1,6 +1,6 @@
 import { defaultSettings } from "../contexts/SettingsContext";
 import { computeChecksum } from "../hash";
-import { getInitStats } from "../quiz/engine";
+import { quizEngine } from "../quiz/engine";
 import {
   AppSettings,
   QuizItem,
@@ -8,7 +8,6 @@ import {
   RunningQuiz,
   StoredWordList,
   WordListMetaData,
-  WordStat,
 } from "../types";
 import { getQuizItemKey, sortWordListInPlace } from "../utils";
 import { storage } from "./Storage";
@@ -138,7 +137,7 @@ export async function getStatFromChecksum(
   const initStats: QuizStat = {};
 
   for (const word of allWords) {
-    initStats[getQuizItemKey(word)] = getInitStats();
+    initStats[getQuizItemKey(word)] = quizEngine.emptyWordStat();
   }
 
   await storage.writeFile(filename, JSON.stringify(initStats));

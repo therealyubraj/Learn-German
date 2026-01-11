@@ -36,6 +36,7 @@ export type WordStat = {
   mastery: number;
   successCount: number;
   lastReviewed: number;
+  exposureCount: number;
 };
 
 export type QuizStat = {

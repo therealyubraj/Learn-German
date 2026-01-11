@@ -1,120 +1,166 @@
-import { QuizItem, QuizStat, WordStat } from "../types";
+import { QuizItem, WordStat } from "../types";
 import { getQuizItemKey } from "../utils";
+import { RunningQuiz } from "../types";
 
-// Configuration for the algorithm
-const MASTERY_THRESHOLD = 3; // N: Hits needed to level up
-const POOL_HEALTHY_SCORE = 50; // Priority threshold to inject new words
+class QuizEngine {
+  private words: QuizItem[] = [];
+  private stats: RunningQuiz["stats"] = {};
+  private checksum: string | null = null;
 
-export function selectNextWord(
-  allWords: QuizItem[],
-  stats: QuizStat,
-  currentItem?: QuizItem
-): QuizItem {
-  const now = Date.now();
+  // session-only memory (NOT persisted)
+  private recentlyShownKeys: string[] = [];
 
-  const activeCandidates: { item: QuizItem; weight: number }[] = [];
-  const dormantCandidates: QuizItem[] = [];
+  // ---- Tunables ----
+  private readonly MAX_LEARNING_SIZE = 7;
+  private readonly TARGET_MASTERY = 3;
+  private readonly MASTERY_SUCCESS_THRESHOLD = 3;
+  private readonly MIN_EXPOSURES_FOR_MASTERY = 5;
+  private readonly RECENT_EXCLUSION_SIZE = 2;
+  private readonly NOVELTY_LEAK_PROBABILITY = 0.15;
 
-  // 1. Categorize words into Active and Dormant pools
-  for (const word of allWords) {
-    const key = getQuizItemKey(word);
-    const stat = stats[key];
+  constructor() {}
 
-    // Prevent immediate repetition
+  public emptyWordStat(): WordStat {
+    return {
+      exposureCount: 0,
+      lastReviewed: 0,
+      mastery: 1,
+      successCount: 0,
+    };
+  }
+
+  public getStats() {
+    return this.stats;
+  }
+
+  public getChecksum() {
+    return this.checksum;
+  }
+
+  // ---- Engine reset on new quiz ----
+  resetEngine(runningQuiz: RunningQuiz) {
+    this.words = runningQuiz.words;
+    this.stats = runningQuiz.stats;
+    this.checksum = runningQuiz.checksum;
+    this.recentlyShownKeys = [];
+
+    // Defensive normalization (important)
+    for (const word of this.words) {
+      const key = getQuizItemKey(word);
+      const stat = this.stats[key];
+
+      // stats should exist, but be defensive
+      if (!stat) continue;
+
+      if (stat.exposureCount === undefined) {
+        stat.exposureCount = 0;
+      }
+    }
+  }
+
+  // ---- Selection ----
+  selectNextWord(): QuizItem {
+    const now = Date.now();
+
+    const learning: QuizItem[] = [];
+    const dormant: QuizItem[] = [];
+
+    for (const word of this.words) {
+      const stat = this.stats[getQuizItemKey(word)];
+      if (!stat) continue;
+
+      if (stat.lastReviewed === 0) {
+        dormant.push(word);
+      } else if (stat.mastery < this.TARGET_MASTERY) {
+        learning.push(word);
+      }
+    }
+
+    // 1. Fill learning set if under capacity
+    if (learning.length < this.MAX_LEARNING_SIZE && dormant.length > 0) {
+      return this.activateDormantWord(dormant);
+    }
+
+    // 2. Soft novelty leak
     if (
-      currentItem &&
-      getQuizItemKey(currentItem) === key &&
-      allWords.length > 1
+      learning.length >= this.MAX_LEARNING_SIZE &&
+      dormant.length > 0 &&
+      Math.random() < this.NOVELTY_LEAK_PROBABILITY
     ) {
-      continue;
+      return this.activateDormantWord(dormant);
     }
 
-    if (stat.lastReviewed === 0) {
-      dormantCandidates.push(word);
+    // 3. Fair rotation among learning words
+    const eligible = learning.filter((word) => {
+      const key = getQuizItemKey(word);
+      return !this.recentlyShownKeys.includes(key);
+    });
+
+    const pool = eligible.length > 0 ? eligible : learning;
+
+    pool.sort((a, b) => {
+      const sa = this.stats[getQuizItemKey(a)];
+      const sb = this.stats[getQuizItemKey(b)];
+
+      // primary: least exposure
+      if (sa.exposureCount! !== sb.exposureCount!) {
+        return sa.exposureCount! - sb.exposureCount!;
+      }
+
+      // secondary: least recently reviewed
+      return sa.lastReviewed - sb.lastReviewed;
+    });
+
+    const chosen = pool[0];
+
+    this.recordShown(chosen);
+
+    return chosen;
+  }
+
+  // ---- Update ----
+  updateStats(word: QuizItem, guessedCorrectly: boolean) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+    if (!stat) return;
+
+    stat.exposureCount = (stat.exposureCount ?? 0) + 1;
+    stat.lastReviewed = Date.now();
+
+    if (guessedCorrectly) {
+      stat.successCount++;
+      if (stat.successCount >= this.MASTERY_SUCCESS_THRESHOLD) {
+        stat.mastery++;
+        stat.successCount = 0;
+      }
     } else {
-      const hoursSince = (now - stat.lastReviewed) / (1000 * 60 * 60);
-      /**
-       * Priority Weight = (Time Since Last Seen / Mastery Level)
-       * Lower Mastery = Higher Weight (appears more often).
-       */
-      const weight = ((hoursSince + 0.1) * 100) / stat.mastery;
-      activeCandidates.push({ item: word, weight });
+      stat.mastery = Math.max(1, stat.mastery - 1);
+      stat.successCount = 0;
     }
   }
 
-  // 2. Determine urgency of active pool
-  const maxPriority =
-    activeCandidates.length > 0
-      ? Math.max(...activeCandidates.map((c) => c.weight))
-      : 0;
+  // ---- Helpers ----
+  private activateDormantWord(dormant: QuizItem[]): QuizItem {
+    const word = dormant[Math.floor(Math.random() * dormant.length)];
+    const key = getQuizItemKey(word);
 
-  /**
-   * 3. DECISION LADDER
-   */
+    const stat = this.stats[key];
+    stat.lastReviewed = Date.now();
+    stat.exposureCount = stat.exposureCount ?? 0;
 
-  // Choice A: Inject a New Word
-  // If we have new words AND (the active pool is empty OR the most urgent review is fresh enough)
-  if (
-    dormantCandidates.length > 0 &&
-    (activeCandidates.length === 0 || maxPriority < POOL_HEALTHY_SCORE)
-  ) {
-    return dormantCandidates[
-      Math.floor(Math.random() * dormantCandidates.length)
-    ];
+    this.recordShown(word);
+
+    return word;
   }
 
-  // Choice B: Review an Active Word (Weighted Random)
-  if (activeCandidates.length > 0) {
-    const totalWeight = activeCandidates.reduce((sum, c) => sum + c.weight, 0);
-    let randomValue = Math.random() * totalWeight;
+  private recordShown(word: QuizItem) {
+    const key = getQuizItemKey(word);
+    this.recentlyShownKeys.push(key);
 
-    for (const candidate of activeCandidates) {
-      randomValue -= candidate.weight;
-      if (randomValue <= 0) return candidate.item;
+    if (this.recentlyShownKeys.length > this.RECENT_EXCLUSION_SIZE) {
+      this.recentlyShownKeys.shift();
     }
-    return activeCandidates[activeCandidates.length - 1].item;
   }
-
-  // Choice C: Final Emergency Fallback (ensures a word is always returned)
-  return allWords[Math.floor(Math.random() * allWords.length)];
 }
 
-export function updateStats(
-  currentStats: QuizStat,
-  currentItem: QuizItem,
-  guessedCorrectly: boolean
-): QuizStat {
-  const key = getQuizItemKey(currentItem);
-  const currentStat = currentStats[key];
-
-  let { mastery, successCount } = currentStat;
-
-  if (guessedCorrectly) {
-    successCount++;
-    if (successCount >= MASTERY_THRESHOLD) {
-      mastery++;
-      successCount = 0;
-    }
-  } else {
-    // Failure Penalty: reset progress to force immediate re-learning
-    mastery = 1;
-    successCount = 0;
-  }
-
-  return {
-    ...currentStats,
-    [key]: {
-      mastery,
-      successCount,
-      lastReviewed: Date.now(), // This "activates" the word for the next run
-    },
-  };
-}
-
-export function getInitStats(): WordStat {
-  return {
-    mastery: 1,
-    successCount: 0,
-    lastReviewed: 0, // 0 signifies it hasn't been "activated" yet
-  };
-}
+export const quizEngine = new QuizEngine();

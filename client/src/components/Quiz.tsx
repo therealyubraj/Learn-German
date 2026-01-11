@@ -3,15 +3,10 @@ import { QuizView } from "./QuizView";
 import { useLocation } from "react-router-dom";
 import { getCombinedWordLists, writeStats } from "../FS/utils";
 import { QuizItem, RunningQuiz } from "../types";
-import { selectNextWord, updateStats } from "../quiz/engine";
+import { quizEngine } from "../quiz/engine";
 
 export function Quiz() {
   const location = useLocation();
-  const quiz = useRef<RunningQuiz>({
-    checksum: "",
-    words: [],
-    stats: {},
-  });
   const [currentItem, setCurrentItem] = useState<QuizItem>({
     LHS: "",
     RHS: "",
@@ -19,21 +14,13 @@ export function Quiz() {
 
   function onNext(guessedCorrectly: boolean) {
     // update the stats of this word in the file
-    quiz.current.stats = updateStats(
-      quiz.current.stats,
-      currentItem,
-      guessedCorrectly
-    );
+    quizEngine.updateStats(currentItem, guessedCorrectly);
 
     // and get a new word and rerender
-    const newItem = selectNextWord(
-      quiz.current.words,
-      quiz.current.stats,
-      currentItem
-    );
+    const newItem = quizEngine.selectNextWord();
     setCurrentItem(newItem);
 
-    writeStats(quiz.current.checksum, quiz.current.stats)
+    writeStats(quizEngine.getChecksum() as string, quizEngine.getStats())
       .then((v) => {
         if (!v) {
           console.error("Failed to write stats?");
@@ -49,16 +36,13 @@ export function Quiz() {
       const fetchedQuiz = await getCombinedWordLists(
         location.state.selectedQuizzes
       );
+      quizEngine.resetEngine(fetchedQuiz);
 
-      quiz.current = fetchedQuiz;
-      setCurrentItem(selectNextWord(fetchedQuiz.words, quiz.current.stats));
+      setCurrentItem(quizEngine.selectNextWord());
     }
     fetchAndSetWordLists();
   }, []);
 
-  if (quiz.current.words.length === 0) {
-    return <div>No words????</div>;
-  }
   return (
     <QuizView
       item={currentItem}

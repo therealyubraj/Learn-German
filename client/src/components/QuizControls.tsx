@@ -43,8 +43,7 @@ export function QuizControls({
   const handleCheckAnswer = () => {
     // In a real app, you'd check the answer value here.
     // For this placeholder, we'll just randomly decide if it was correct.
-    const isCorrect = inputValue === item.RHS;
-    console.log("userinput", inputValue, item.RHS);
+    const isCorrect = inputValue.toLowerCase() === item.RHS.toLowerCase();
     if (isCorrect) {
       handlePlaySound();
       setControlState("guessedCorrect");
