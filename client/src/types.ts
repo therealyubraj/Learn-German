@@ -12,6 +12,10 @@ export type WordListMetaData = {
   checksum: string;
 };
 
+export type WordListSummary = WordListMetaData & {
+  wordCount: number;
+};
+
 export type StoredWordList = {
   list: Array<QuizItem>;
   metadata: WordListMetaData;

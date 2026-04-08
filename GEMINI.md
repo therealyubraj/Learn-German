@@ -230,6 +230,16 @@ The foundational work for the application is largely complete. This includes:
 - **VIM Mode**: A global, decoupled VIM mode for keyboard navigation is now fully implemented and synchronized with the UI.
 - **Basic Quiz UI**: The main components for the quiz interface (`QuizView`, `QuizControls`) are built and functional, though the word selection logic is currently random.
 
+### Recent UI and Flow Updates
+
+- **Default Starter List Seeded on First Load**: A built-in starter word list now gets written into OPFS automatically when no user word lists exist yet. This preserves the existing file-based word list flow while reducing first-use friction.
+- **Starter List Direction Updated**: The default seeded list currently uses simple English-to-German verb pairs intended to make the first quiz session approachable.
+- **Landing Page Reworked**: The home page has been rewritten into a more portfolio-friendly entry screen with a terminal-inspired dark theme, clearer CTA hierarchy, and copy that mentions VIM support.
+- **Shared Interaction Styles Updated**: Old Vite default hover/focus styles were removed from the global CSS and replaced with interaction states that better match the current terminal palette.
+- **Screenshot Workflow Improved**: The local screenshot helper script (`ss.sh`) now finds the app tab by URL instead of assuming a fixed Chrome tab index, making UI inspection more reliable during design work.
+- **Screenshot Review Assumption**: When reviewing UI screenshots for CSS fixes, always assume the browser is at 100% zoom. Do not blame zoom level as the cause of spacing, sizing, or layout issues.
+- **Quiz Selection Screen In Progress**: The quiz selection page has been partially redesigned to be more understandable for new users, but layout polish is still ongoing. The current direction is a more vertical flow with clearer separation between selected lists, adding more lists, and starting the quiz.
+
 ## Next Steps
 
 With the core infrastructure and UI behavior in place, the project's primary focus shifts to the learning logic itself:
@@ -237,6 +247,10 @@ With the core infrastructure and UI behavior in place, the project's primary foc
 1.  **Implement Spaced Repetition Algorithm**: The current quiz engine selects words randomly. This will be replaced with the spaced repetition algorithm detailed below to create an intelligent learning queue that prioritizes words the user struggles with and schedules reviews for mastered words at increasing intervals.
 
 2.  **Integrate VIM Mode in Quiz Controls (Completed)**: The VIM mode context and functionality now exist and are fully integrated, handling focus and state changes globally without coupling with UI components.
+
+3.  **Finish Quiz Selection UI Polish**: The selection screen still needs final spacing, hierarchy, and action-placement refinement so that the first-run word-list selection flow feels clear and intentional.
+
+4.  **Revisit Home-to-Quiz Flow After Selection Screen Polish**: Once the selection screen is stable, the full home-to-quiz path should be tested again to confirm the onboarding flow is suitable for showcasing on a CV.
 
 For a detailed explanation of the spaced repetition algorithm, including data structures, review intervals, and step-by-step logic for managing the active pool and updating word statistics, please refer to [algorith.txt](algorith.txt).
 

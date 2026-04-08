@@ -36,6 +36,30 @@ Retrieved 2025-11-23, License - CC BY-SA 4.0
     /* Chrome/Safari */
   }
 
+  .quiz-selection-scroll {
+    scrollbar-width: auto;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar {
+    display: block;
+    width: 10px;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-track {
+    background: #161b22;
+    border-radius: 9999px;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 9999px;
+    border: 2px solid #161b22;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-thumb:hover {
+    background: #8b949e;
+  }
+
   /* Custom styles for range input (sliders) */
   input[type="range"] {
     -webkit-appearance: none;

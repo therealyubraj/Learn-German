@@ -9,6 +9,7 @@ import {
   RunningQuiz,
   StoredWordList,
   WordListMetaData,
+  WordListSummary,
 } from "../types";
 import { getQuizItemKey, sortWordListInPlace } from "../utils";
 import { storage } from "./Storage";
@@ -42,6 +43,30 @@ export async function getAllWordListMetadata() {
   }
 
   return allMetadata;
+}
+
+export async function getAllWordListSummaries(): Promise<WordListSummary[]> {
+  const wordListDirectory = getWordListDirectory();
+
+  const allFiles = (await storage.ls(wordListDirectory)).filter(
+    (x) => x.type === "file"
+  );
+
+  const allSummaries: WordListSummary[] = [];
+  for (const file of allFiles) {
+    const fileContent = await storage.readFile(
+      wordListDirectory + "/" + file.name
+    );
+
+    const parsedContent: StoredWordList = JSON.parse(fileContent);
+
+    allSummaries.push({
+      ...parsedContent.metadata,
+      wordCount: parsedContent.list.length,
+    });
+  }
+
+  return allSummaries.sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export async function getCombinedWordLists(
