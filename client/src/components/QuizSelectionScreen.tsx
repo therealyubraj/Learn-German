@@ -14,7 +14,16 @@ export function QuizSelectionScreen() {
   useEffect(() => {
     async function populateList() {
       const allItems = await getAllWordListMetadata();
-      setAvailableItems(allItems.map((x) => ({ name: x.name })));
+      const nextItems = allItems.map((x) => ({ name: x.name }));
+
+      if (nextItems.length === 1) {
+        setSelectedItems(nextItems);
+        setAvailableItems([]);
+        return;
+      }
+
+      setSelectedItems([]);
+      setAvailableItems(nextItems);
     }
 
     populateList();

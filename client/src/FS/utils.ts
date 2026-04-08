@@ -1,4 +1,5 @@
 import { defaultSettings } from "../contexts/SettingsContext";
+import { getBuiltInWordLists } from "../builtInWordLists";
 import { computeChecksum } from "../hash";
 import { quizEngine } from "../quiz/engine";
 import {
@@ -81,6 +82,22 @@ export async function saveNewWordList(newList: StoredWordList) {
 
   if (!success) {
     throw new Error("Could not save new list.");
+  }
+}
+
+export async function initializeBuiltInWordLists() {
+  const wordListDirectory = getWordListDirectory();
+  const existingFiles = (await storage.ls(wordListDirectory)).filter(
+    (x) => x.type === "file"
+  );
+
+  if (existingFiles.length > 0) {
+    return;
+  }
+
+  const builtInWordLists = await getBuiltInWordLists();
+  for (const wordList of builtInWordLists) {
+    await saveNewWordList(wordList);
   }
 }
 

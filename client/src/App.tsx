@@ -1,4 +1,5 @@
 import { Routes, Route, Link } from "react-router-dom";
+import { useEffect } from "react";
 import "./App.css";
 import { UserImport } from "./components/UserImport";
 import { OPFSExplorer } from "./components/OPFS";
@@ -9,6 +10,7 @@ import { Settings } from "./components/Settings";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { VimModeProvider } from "./contexts/VimModeContext";
 import { VimModeIndicator } from "./components/VimModeIndicator";
+import { initializeBuiltInWordLists } from "./FS/utils";
 import { showToast } from "./Toast";
 
 function Home() {
@@ -26,6 +28,12 @@ function Home() {
 }
 
 function App() {
+  useEffect(() => {
+    initializeBuiltInWordLists().catch((error) => {
+      console.error("Failed to initialize built-in word lists.", error);
+    });
+  }, []);
+
   return (
     <SettingsProvider>
       <VimModeProvider>
