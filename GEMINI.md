@@ -238,7 +238,22 @@ The foundational work for the application is largely complete. This includes:
 - **Shared Interaction Styles Updated**: Old Vite default hover/focus styles were removed from the global CSS and replaced with interaction states that better match the current terminal palette.
 - **Screenshot Workflow Improved**: The local screenshot helper script (`ss.sh`) now finds the app tab by URL instead of assuming a fixed Chrome tab index, making UI inspection more reliable during design work.
 - **Screenshot Review Assumption**: When reviewing UI screenshots for CSS fixes, always assume the browser is at 100% zoom. Do not blame zoom level as the cause of spacing, sizing, or layout issues.
-- **Quiz Selection Screen In Progress**: The quiz selection page has been partially redesigned to be more understandable for new users, but layout polish is still ongoing. The current direction is a more vertical flow with clearer separation between selected lists, adding more lists, and starting the quiz.
+- **Quiz Selection Screen Restored and Simplified**: The quiz selection page is back on the styled terminal-like layout. The current implementation uses a centered page wrapper plus a card whose padding directly controls visible inset. Avoid solving card-spacing issues with extra inner width wrappers unless there is a separate confirmed width problem.
+- **Quiz Selection First-Open Behavior Added**: On the user's first visit to the quiz selection page, the app now checks Local Storage and auto-selects `German Basics` if that set exists. If it does not exist, the screen falls back safely to the normal selection behavior.
+- **StrictMode Reminder for First-Open Logic**: In development, `useEffect` may appear to run twice because the app is wrapped in React `StrictMode`. This can affect Local Storage-based initialization while testing, but production behavior should mount normally.
+- **Scrollbar Override Added for Selection List**: The global app CSS hides scrollbars by default, so the quiz selection dropdown now uses a dedicated CSS override class to show a visible scrollbar in the options list.
+- **Selection Chip Width Fixed**: Selected-set chips now use a constant width so they do not resize based on label length. Long names should truncate inside that fixed-width chip.
+- **Quiz Selection Screen Still Needs Final Micro-Polish**: The overall layout is close, but future tweaks should stay small and targeted: title weight, dropdown focus treatment, and any remaining spacing issues should be solved by changing the actual visible box being judged.
+
+### Quiz Selection Layout Findings
+
+- **Change the Box the User Is Actually Looking At**: If the complaint is about content being too close to a card border, add padding to the card itself. Do not start by changing an outer wrapper.
+- **Make the Box Visible When Debugging**: When spacing is ambiguous, temporarily add a visible border to the suspected container and test padding directly on that box before making more abstract layout changes.
+- **Prefer Explicit Padding on Primary Surfaces**: For core surfaces like the main card, using explicit values such as `px-[36px] py-[40px]` is safer than guessing with multiple nested containers or questionable utility tokens.
+- **Avoid Wrapper Gymnastics Unless the Problem Is Actually Width**: An inner max-width wrapper is only justified if the card width itself is fine but the content lane is objectively too wide. Padding and width are different problems.
+- **Describe Screenshots Literally Before Editing**: Future screenshot review should explicitly state what is visible in the image before proposing a fix. This avoids editing the wrong layer of the layout.
+- **Do Not Infer Open-State Issues from Closed-State Screenshots**: If the dropdown is closed, do not claim anything about the search box, the options list, or the open-state focus ring. Ask for or capture a screenshot that actually shows the relevant state.
+- **Global Layout Can Interfere with Local Spacing**: The app shell previously centered the entire route tree, which made page-level spacing harder to reason about. Check app-level wrappers before assuming a page component is at fault.
 
 ## Next Steps
 
@@ -248,7 +263,7 @@ With the core infrastructure and UI behavior in place, the project's primary foc
 
 2.  **Integrate VIM Mode in Quiz Controls (Completed)**: The VIM mode context and functionality now exist and are fully integrated, handling focus and state changes globally without coupling with UI components.
 
-3.  **Finish Quiz Selection UI Polish**: The selection screen still needs final spacing, hierarchy, and action-placement refinement so that the first-run word-list selection flow feels clear and intentional.
+3.  **Finish Quiz Selection UI Polish**: The selection screen now needs only small, evidence-driven refinements. Future edits should preserve the simpler page-wrapper/card-padding model instead of reintroducing nested layout compensation.
 
 4.  **Revisit Home-to-Quiz Flow After Selection Screen Polish**: Once the selection screen is stable, the full home-to-quiz path should be tested again to confirm the onboarding flow is suitable for showcasing on a CV.
 

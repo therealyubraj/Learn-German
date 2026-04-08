@@ -1,30 +1,38 @@
 # Learn-German
 
-Trying to build a Deutsch learning quiz app using Gemini agent.
+Learn-German is a local-first German quiz app focused on quick practice, custom word lists, and a VIM-supporting quiz.
 
-## Current Focus
+## What This Repo Contains
 
-The current work is on the quiz setup / word set selection UI in
-[`client/src/components/QuizSelectionScreen.tsx`](client/src/components/QuizSelectionScreen.tsx).
+- `client/`: the main React + Vite application
+- OPFS-based local storage for user word lists and quiz data
+- a quiz setup flow for selecting saved word sets before starting a session
+- settings for features like VIM-style input behavior and text-to-speech
 
-The intended direction is:
+## What To Expect
 
-- keep the existing terminal-like dark theme used by the home page
-- use a centered single-column layout
-- use a searchable multi-select dropdown with tick marks
-- keep selection behavior simple: clicking an item selects or deselects it in place, with no sorting or pinning
-- show selected sets as chips below the dropdown
-- keep `Start Quiz` as the primary action and `Import a new word set` as the secondary action
+This project is still under active refinement. The core direction is already clear:
 
-## Current Problem
+- a dark, terminal-influenced UI
+- user-managed word lists instead of hardcoded quiz content
+- local-first persistence in the browser
+- a quiz flow designed for deliberate repetition rather than flashy gamification
 
-The remaining issue is CSS layout polish, especially visible spacing and alignment:
+Some parts are already in place, while others are still being polished:
 
-- the vertical spacing between the title block and the main card still needs work
-- the overall page centering and spacing rhythm still need visual tuning
-- screenshot-driven CSS tweaks should be based on what is actually visible in the rendered UI
+- word list import and local storage exist
+- built-in starter content is seeded for first-time use
+- the quiz selection screen is functional and near its intended layout
+- learning logic is still evolving beyond the current random selection behavior
 
-## Screenshot Review Rule
+## Current Product Direction
 
-When reviewing UI screenshots for CSS fixes, always assume the browser is at 100% zoom.
-Do not blame zoom level for spacing, sizing, or layout issues.
+The app is being shaped into a practical German study tool with:
+
+- custom word-set management
+- selectable combined quiz sets
+- persistent progress and statistics
+- configurable TTS support
+- optional keyboard-centric interaction patterns
+
+I am actively adding and changing the tool. So expect surprises 😅.
