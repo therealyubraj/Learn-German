@@ -60,6 +60,17 @@ Retrieved 2025-11-23, License - CC BY-SA 4.0
     background: #8b949e;
   }
 
+  .settings-number-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  .settings-number-input::-webkit-outer-spin-button,
+  .settings-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   /* Custom styles for range input (sliders) */
   input[type="range"] {
     -webkit-appearance: none;
@@ -83,9 +94,9 @@ Retrieved 2025-11-23, License - CC BY-SA 4.0
     height: 1.25rem; /* Larger for easier grabbing */
     width: 1.25rem; /* Larger for easier grabbing */
     border-radius: 9999px; /* fully rounded */
-    background: #3b82f6; /* Tailwind blue-500 */
+    background: #00c896;
     margin-top: -0.375rem; /* Adjust to center vertically on track */
-    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); /* Subtle glow */
+    box-shadow: 0 0 0 0.25rem rgba(0, 200, 150, 0.18); /* Subtle glow */
   }
 
   /* Track styles for Mozilla browsers */
@@ -101,8 +112,8 @@ Retrieved 2025-11-23, License - CC BY-SA 4.0
     height: 1.25rem; /* Larger for easier grabbing */
     width: 1.25rem; /* Larger for easier grabbing */
     border-radius: 9999px; /* fully rounded */
-    background: #3b82f6; /* Tailwind blue-500 */
-    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); /* Subtle glow */
+    background: #00c896;
+    box-shadow: 0 0 0 0.25rem rgba(0, 200, 150, 0.18); /* Subtle glow */
   }
 }
 

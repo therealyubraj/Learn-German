@@ -22,8 +22,8 @@ function Home() {
 
       <div className="relative mx-auto w-full max-w-5xl">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
-          <h1 className="text-5xl font-semibold tracking-tight text-[#00FF9C] sm:text-6xl">
-            Learn German
+          <h1 className="text-[5rem] font-semibold leading-none tracking-[-0.05em] text-[#00FF9C] sm:text-[7rem]">
+            Learn Deutsch
           </h1>
           <p className="max-w-2xl text-lg leading-8 text-[#8B949E]">
             Start a quiz immediately, keep your own word lists locally, and use
