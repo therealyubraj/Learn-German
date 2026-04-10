@@ -7,21 +7,29 @@ type ControlState = "guessing" | "givenUp" | "guessedCorrect";
 
 // Input styles with variants for validation state
 const inputStyles = {
-  base: `min-h-[80px] px-6 py-4 text-center text-[3em] bg-gray-900 placeholder-gray-400
-         text-white border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1
-         transition-all duration-300 disabled:cursor-not-allowed`,
+  base: `min-h-[4.75rem] w-full rounded-[1.15rem] border bg-[#0D1117] px-[24px] py-[18px]
+         text-center text-[3rem] leading-none font-semibold tracking-tight text-[#E6EDF3]
+         placeholder:text-[#8B949E] outline-none transition-all duration-200
+         disabled:cursor-not-allowed disabled:opacity-80`,
   variants: {
     state: {
-      guessing: "!border-blue-500 focus:ring-blue-500",
-      guessedCorrect: "!border-green-500",
-      givenUp: "!border-red-500",
+      guessing:
+        "border-[#30363D] focus:border-[#00C896] focus:ring-1 focus:ring-[#00C896]/30",
+      guessedCorrect: "border-[#00C896] bg-[#00C896]/10",
+      givenUp: "border-[#F85149] bg-[#F85149]/10",
     },
   },
 };
 
 // Simplified button styles with a single, uniform appearance
 const buttonStyles = {
-  base: "px-4 py-2 rounded-md text-white transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 bg-blue-600 hover:bg-blue-700",
+  base: "inline-flex min-h-14 items-center justify-center rounded-2xl border px-[22px] py-[14px] text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+  primary:
+    "border-[#00C896] bg-[#00C896] text-[#0D1117] hover:bg-[#00FF9C] disabled:border-[#30363D] disabled:bg-[#1C232D] disabled:text-[#8B949E]",
+  secondary:
+    "border-[#30363D] bg-[#0D1117] text-[#E6EDF3] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]",
+  quiet:
+    "border-[#30363D] bg-[#0D1117] text-[#8B949E] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]",
 };
 
 export function QuizControls({
@@ -73,9 +81,16 @@ export function QuizControls({
   };
 
   return (
-    <div className="flex flex-col gap-5 mt-4">
-      <div className="w-full max-w-2xl flex items-center gap-4">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <label
+          htmlFor="quiz-answer"
+          className="text-base font-medium text-[#A6ADC8]"
+        >
+          Your answer
+        </label>
         <input
+          id="quiz-answer"
           name="answer"
           className={`${inputStyles.base} ${
             inputStyles.variants.state[controlState]
@@ -93,44 +108,51 @@ export function QuizControls({
             }
           }}
         />
-        <button
-          className={buttonStyles.base}
-          onClick={handlePlaySound}
-          disabled={controlState === "guessing" || isSpeaking}
-          data-vim-key="s"
-        >
-          🔊
-        </button>
       </div>
-      <p className="text-gray-300 text-lg mt-2 text-center">
-        {controlState !== "guessing" && item.remarks}
-      </p>
-      <div className="flex gap-4">
+
+      <div className="min-h-12 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-center text-sm font-medium text-[#E6EDF3]">
+        {controlState === "guessing"
+          ? "Type the German translation, then check your answer."
+          : item.remarks || `Correct answer: ${item.RHS}`}
+      </div>
+
+      <div className="flex flex-col gap-4">
         <button
-          className={buttonStyles.base}
+          className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
           onClick={handleCheckAnswer}
           disabled={controlState !== "guessing" || isSpeaking}
           data-vim-key="Enter"
         >
           Check answer
         </button>
-        <button
-          className={buttonStyles.base}
-          onClick={handleGiveUp}
-          disabled={controlState !== "guessing" || isSpeaking}
-          data-vim-key="g"
-        >
-          Give up
-        </button>
-        <button
-          className={buttonStyles.base}
-          onClick={handleNextQuestion}
-          disabled={controlState === "guessing" || isSpeaking}
-          data-vim-key="n"
-        >
-          Next question
-        </button>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <button
+            className={`${buttonStyles.base} ${buttonStyles.quiet}`}
+            onClick={handlePlaySound}
+            disabled={controlState === "guessing" || isSpeaking}
+            data-vim-key="s"
+          >
+            Listen
+          </button>
+          <button
+            className={`${buttonStyles.base} ${buttonStyles.secondary}`}
+            onClick={handleGiveUp}
+            disabled={controlState !== "guessing" || isSpeaking}
+            data-vim-key="g"
+          >
+            Give up
+          </button>
+          <button
+            className={`${buttonStyles.base} ${buttonStyles.secondary}`}
+            onClick={handleNextQuestion}
+            disabled={controlState === "guessing" || isSpeaking}
+            data-vim-key="n"
+          >
+            Next question
+          </button>
+        </div>
       </div>
+
     </div>
   );
 }
