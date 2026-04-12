@@ -17,13 +17,13 @@ interface SettingsContextType {
 
 export const defaultSettings: AppSettings = {
   quiz: {
-    poolSize: 10,
+    poolSize: 5,
   },
   vim: {
     enabled: false,
   },
   tts: {
-    voiceName: null,
+    voiceName: "Google Deutsch",
     rate: 1,
     pitch: 1,
     volume: 1,
@@ -32,7 +32,7 @@ export const defaultSettings: AppSettings = {
 
 // Create the context
 const SettingsContext = createContext<SettingsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 // Create a provider component

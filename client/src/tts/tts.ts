@@ -1,5 +1,6 @@
 class TTSService {
   private voices: SpeechSynthesisVoice[] = [];
+  private readonly preferredDefaultVoiceName = "Google Deutsch";
 
   constructor() {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -32,10 +33,15 @@ class TTSService {
       }
 
       const utterance = new SpeechSynthesisUtterance(text);
-      const voice = this.voices.find((v) => v.name === settings.voiceName);
+      const germanVoices = this.voices.filter((v) => v.lang.startsWith("de"));
+      const preferredVoice =
+        this.voices.find((v) => v.name === settings.voiceName) ??
+        this.voices.find((v) => v.name === this.preferredDefaultVoiceName) ??
+        germanVoices.find((v) => v.default) ??
+        germanVoices[0];
 
-      if (voice) {
-        utterance.voice = voice;
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
       }
 
       utterance.rate = settings.rate;
