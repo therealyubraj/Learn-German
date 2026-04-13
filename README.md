@@ -1,6 +1,7 @@
 # Learn-German
 
 Learn-German is a local-first German quiz app focused on quick practice, custom word lists, and a VIM-supporting quiz.
+Hosted on: [https://german.yubrajdhakal.com.np](https://german.yubrajdhakal.com.np)
 
 ## What This Repo Contains
 
