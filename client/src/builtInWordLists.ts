@@ -1,4 +1,4 @@
-import { computeChecksum } from "./hash";
+import { getWordListChecksum } from "./lib";
 import { StoredWordList, WordList } from "./types";
 import { sortWordListInPlace } from "./utils";
 
@@ -26,7 +26,7 @@ export async function getBuiltInWordLists(): Promise<Array<StoredWordList>> {
       list: sortedList,
       metadata: {
         name: "German Basics",
-        checksum: await computeChecksum(JSON.stringify(sortedList)),
+        checksum: await getWordListChecksum(sortedList),
       },
     },
   ];

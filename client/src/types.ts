@@ -5,6 +5,7 @@ export type QuizItem = {
   TTS?: string;
 };
 
+export type Word = QuizItem;
 export type WordList = Array<QuizItem>;
 
 export type WordListMetaData = {
@@ -45,6 +46,13 @@ export type WordStat = {
 
 export type QuizStat = {
   [key: string]: WordStat;
+};
+
+export type WordStatsMap = QuizStat;
+
+export type VersionedQuizStats = {
+  version: number;
+  stats: QuizStat;
 };
 
 export type RunningQuiz = {

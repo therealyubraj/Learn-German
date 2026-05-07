@@ -1,8 +1,8 @@
 import { useState, ChangeEvent } from "react";
 import { WordList } from "../types";
 import { getAllWordListMetadata, saveNewWordList } from "../FS/utils";
+import { getWordListChecksum } from "../lib";
 import { sortWordListInPlace } from "../utils";
-import { computeChecksum } from "../hash";
 import { showToast } from "../Toast";
 
 const fieldClassName =
@@ -67,24 +67,40 @@ export function UserImport() {
       const cleanList: WordList = [];
       for (let i = 0; i < parsedJSON.length; i++) {
         const word = parsedJSON[i];
-        if (!word.LHS) {
+        if (typeof word.LHS !== "string" || word.LHS.trim() === "") {
           throw new Error(`LHS is empty at index ${i}.`);
         }
 
-        if (!word.RHS) {
+        if (typeof word.RHS !== "string" || word.RHS.trim() === "") {
           throw new Error(`RHS is empty at index ${i}.`);
         }
 
+        if (
+          word.remarks !== undefined &&
+          word.remarks !== null &&
+          typeof word.remarks !== "string"
+        ) {
+          throw new Error(`remarks must be a string at index ${i}.`);
+        }
+
+        if (
+          word.TTS !== undefined &&
+          word.TTS !== null &&
+          typeof word.TTS !== "string"
+        ) {
+          throw new Error(`TTS must be a string at index ${i}.`);
+        }
+
         cleanList.push({
-          LHS: word.LHS,
-          RHS: word.RHS,
-          remarks: word.remarks,
-          TTS: word.TTS,
+          LHS: word.LHS.trim(),
+          RHS: word.RHS.trim(),
+          remarks: word.remarks?.trim() || undefined,
+          TTS: word.TTS?.trim() || undefined,
         });
       }
 
       sortWordListInPlace(cleanList);
-      const newChecksum = await computeChecksum(JSON.stringify(cleanList));
+      const newChecksum = await getWordListChecksum(cleanList);
 
       const existingListsMetadata = await getAllWordListMetadata();
 
@@ -139,7 +155,7 @@ export function UserImport() {
             <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm leading-6 text-[#8B949E]">
               Expected format:
               <code className="ml-2 rounded-lg border border-[#30363D] bg-[#161B22] px-2 py-1 text-xs text-[#E6EDF3]">
-                Array&lt;{"{ LHS: string; RHS: string }"}&gt;
+                Array&lt;{"{ LHS: string; RHS: string; remarks?: string; TTS?: string }"}&gt;
               </code>
             </div>
 
@@ -173,8 +189,16 @@ export function UserImport() {
                 onChange={(e) => setListJSONInput(e.target.value)}
                 spellCheck={false}
                 placeholder={`[
-  { "LHS": "das Haus", "RHS": "the house" },
-  { "LHS": "die Katze", "RHS": "the cat" }
+  {
+    "LHS": "das Haus",
+    "RHS": "the house",
+    "remarks": "neuter noun",
+    "TTS": "das Haus"
+  },
+  {
+    "LHS": "die Katze",
+    "RHS": "the cat"
+  }
 ]`}
                 className={`${fieldClassName} ${fieldStateClassName} min-h-[22rem] resize-y font-mono text-sm leading-7`}
               />

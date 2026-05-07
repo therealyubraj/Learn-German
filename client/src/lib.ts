@@ -1,4 +1,4 @@
-import { Word, WordList } from "./types";
+import { QuizItem, WordList } from "./types";
 import { computeChecksum } from "./hash";
 
 /**
@@ -7,7 +7,7 @@ import { computeChecksum } from "./hash";
  * @param word The word object.
  * @returns A string in the format "LHS|RHS".
  */
-export function getWordIdentifier(word: Word): string {
+export function getWordIdentifier(word: QuizItem): string {
   return `${word.LHS}|${word.RHS}`;
 }
 
@@ -21,15 +21,13 @@ export function getWordIdentifier(word: Word): string {
  * @returns A promise that resolves to the SHA-256 checksum string.
  */
 export async function getWordListChecksum(
-  wordList: WordList
+  wordList: WordList | { words: WordList }
 ): Promise<string> {
-  // Create a string representation of the sorted word list
-  const wordIdentifiers = wordList.words
+  const words = Array.isArray(wordList) ? wordList : wordList.words;
+  const wordIdentifiers = words
     .map(getWordIdentifier)
     .sort((a, b) => a.localeCompare(b));
   const concatenatedWords = wordIdentifiers.join("|");
 
-  // Compute the SHA-256 hash of the string
-  const checksum = await computeChecksum(concatenatedWords);
-  return checksum;
+  return computeChecksum(concatenatedWords);
 }

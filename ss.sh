@@ -20,7 +20,7 @@ tell application "Google Chrome"
         set tabIndex to 0
         repeat with theTab in every tab of theWindow
             set tabIndex to tabIndex + 1
-            if (URL of theTab starts with "http://localhost:5174") or (URL of theTab starts with "https://localhost:5174") then
+            if (URL of theTab starts with "http://localhost:5173") or (URL of theTab starts with "https://localhost:5173") or (URL of theTab starts with "http://localhost:5174") or (URL of theTab starts with "https://localhost:5174") then
                 set active tab index of theWindow to tabIndex
                 set index of theWindow to 1
                 set appTabFound to true

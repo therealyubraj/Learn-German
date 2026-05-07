@@ -7,11 +7,11 @@ import { Navbar } from "./components/Navbar";
 import { Quiz } from "./components/Quiz";
 import { QuizSelectionScreen } from "./components/QuizSelectionScreen";
 import { Settings } from "./components/Settings";
+import { WordSetEditor } from "./components/WordSetEditor";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { VimModeProvider } from "./contexts/VimModeContext";
 import { VimModeIndicator } from "./components/VimModeIndicator";
 import { initializeBuiltInWordLists } from "./FS/utils";
-import { showToast } from "./Toast";
 
 function Home() {
   return (
@@ -73,6 +73,7 @@ function App() {
               <Route path="/import" element={<UserImport />} />
               <Route path="/opfs" element={<OPFSExplorer />} />
               <Route path="/quiz-selection" element={<QuizSelectionScreen />} />
+              <Route path="/word-sets/:name/edit" element={<WordSetEditor />} />
               <Route path="/quiz" element={<Quiz />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

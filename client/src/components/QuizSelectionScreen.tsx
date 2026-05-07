@@ -21,12 +21,14 @@ type QuizButtonProps = {
 
 type SelectionChipProps = {
   label: string;
+  onEdit: () => void;
   onRemove: () => void;
 };
 
 type MultiSelectDropdownProps = {
   options: WordListSummary[];
   selectedNames: string[];
+  onEdit: (name: string) => void;
   onToggle: (name: string) => void;
   disabled?: boolean;
 };
@@ -62,7 +64,7 @@ function QuizButton({
   );
 }
 
-function SelectionChip({ label, onRemove }: SelectionChipProps) {
+function SelectionChip({ label, onEdit, onRemove }: SelectionChipProps) {
   return (
     <motion.span
       layout
@@ -73,14 +75,24 @@ function SelectionChip({ label, onRemove }: SelectionChipProps) {
       className="inline-flex min-h-12 w-[15rem] items-center justify-between gap-3 rounded-full border border-[#00C896]/35 bg-[#00C896]/10 px-[18px] py-[12px] text-sm font-medium text-[#E6EDF3] shadow-[0_10px_24px_rgba(0,200,150,0.08)]"
     >
       <span className="truncate">{label}</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove ${label}`}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-transparent text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/10 hover:text-[#E6EDF3]"
-      >
-        &times;
-      </button>
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Edit ${label}`}
+          className="inline-flex h-7 min-w-[3.5rem] items-center justify-center rounded-full border border-transparent px-3 text-xs font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/10 hover:text-[#E6EDF3]"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${label}`}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/10 hover:text-[#E6EDF3]"
+        >
+          &times;
+        </button>
+      </span>
     </motion.span>
   );
 }
@@ -88,12 +100,13 @@ function SelectionChip({ label, onRemove }: SelectionChipProps) {
 function MultiSelectDropdown({
   options,
   selectedNames,
+  onEdit,
   onToggle,
   disabled = false,
 }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -107,7 +120,7 @@ function MultiSelectDropdown({
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery("");
-      setActiveIndex(0);
+      setActiveIndex(-1);
       return;
     }
 
@@ -116,7 +129,7 @@ function MultiSelectDropdown({
 
   useEffect(() => {
     if (activeIndex >= visibleOptions.length) {
-      setActiveIndex(Math.max(visibleOptions.length - 1, 0));
+      setActiveIndex(visibleOptions.length > 0 ? visibleOptions.length - 1 : -1);
     }
   }, [activeIndex, visibleOptions.length]);
 
@@ -152,14 +165,18 @@ function MultiSelectDropdown({
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((current) =>
-        Math.min(current + 1, Math.max(visibleOptions.length - 1, 0)),
+        current < 0
+          ? 0
+          : Math.min(current + 1, Math.max(visibleOptions.length - 1, 0)),
       );
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActiveIndex((current) => Math.max(current - 1, 0));
+      setActiveIndex((current) =>
+        current < 0 ? Math.max(visibleOptions.length - 1, 0) : Math.max(current - 1, 0),
+      );
       return;
     }
 
@@ -188,17 +205,17 @@ function MultiSelectDropdown({
         aria-haspopup="listbox"
         onKeyDown={handleOptionKeyDown}
         onClick={() => !disabled && setIsOpen((current) => !current)}
-        className={`group relative isolate flex min-h-[4.5rem] w-full items-center justify-between overflow-hidden rounded-2xl border bg-[#161B22] px-[24px] py-[18px] transition-all ${
+        className={`group relative isolate flex min-h-[4.5rem] w-full items-center justify-between overflow-hidden rounded-2xl border bg-[#161B22] px-[24px] py-[18px] transition-all focus-visible:outline-none ${
           disabled
             ? "cursor-not-allowed border-[#30363D] opacity-60"
-            : `cursor-pointer border-[#30363D] shadow-[0_12px_32px_rgba(0,0,0,0.18)] ${
+            : `cursor-pointer border-[#30363D] text-[#E6EDF3] shadow-[0_12px_32px_rgba(0,0,0,0.18)] ${
                 isOpen
-                  ? "border-[#00C896] ring-1 ring-[#00C896]/30"
-                  : "hover:border-[#00C896] hover:ring-1 hover:ring-[#00C896]/20"
+                  ? "bg-[#1A222C] text-[#00FF9C]"
+                  : "hover:border-[#00C896] hover:bg-[#182029]"
               }`
         }`}
       >
-        <span className="truncate text-[1.05rem] font-medium text-[#E6EDF3]">
+        <span className="truncate text-[1.05rem] font-medium">
           {triggerLabel}
         </span>
         <span
@@ -229,11 +246,11 @@ function MultiSelectDropdown({
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
-                  setActiveIndex(0);
+                  setActiveIndex(-1);
                 }}
                 onKeyDown={handleOptionKeyDown}
                 placeholder="Search or select word sets..."
-                className="w-full rounded-xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm text-[#E6EDF3] outline-none placeholder:text-[#8B949E] focus:border-[#00C896] focus:ring-1 focus:ring-[#00C896]/30"
+                className="w-full rounded-xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm text-[#E6EDF3] outline-none placeholder:text-[#8B949E] focus:border-[#30363D] focus:bg-[#131A22] focus:text-[#00FF9C]"
               />
             </div>
 
@@ -244,11 +261,9 @@ function MultiSelectDropdown({
                     const isSelected = selectedNames.includes(option.name);
 
                     return (
-                      <button
+                      <div
                         key={option.name}
-                        type="button"
-                        onClick={() => onToggle(option.name)}
-                        className={`flex w-full items-center justify-between gap-4 rounded-xl px-[18px] py-[14px] text-left transition-colors ${
+                        className={`flex items-center gap-3 rounded-xl px-[18px] py-[14px] transition-colors ${
                           index === activeIndex
                             ? isSelected
                               ? "bg-[#00C896]/18"
@@ -256,48 +271,62 @@ function MultiSelectDropdown({
                             : "bg-transparent"
                         } ${isSelected ? "bg-[#00C896]/12" : ""} hover:bg-[#00C896]/14`}
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <motion.span
-                            layout={false}
-                            initial={false}
-                            animate={{
-                              backgroundColor: isSelected
-                                ? "rgba(0, 200, 150, 1)"
-                                : "rgba(13, 17, 23, 1)",
-                              borderColor: isSelected
-                                ? "rgba(0, 200, 150, 1)"
-                                : "rgba(48, 54, 61, 1)",
-                              color: isSelected
-                                ? "rgba(13, 17, 23, 1)"
-                                : "rgba(13, 17, 23, 0)",
-                              scale: isSelected ? 1 : 0.98,
-                            }}
-                            transition={{ duration: 0.16, ease: "easeOut" }}
-                            aria-hidden="true"
-                            className={`inline-flex h-5 w-5 items-center justify-center rounded border text-xs font-bold ${
-                              isSelected ? "text-[#0D1117]" : "text-transparent"
-                            }`}
-                          >
-                            ✓
-                          </motion.span>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-[#E6EDF3]">
-                              {option.name}
-                            </p>
-                            <p className="text-xs text-[#8B949E]">
-                              {option.wordCount} words
-                            </p>
+                        <button
+                          type="button"
+                          onClick={() => onToggle(option.name)}
+                          className="flex min-w-0 flex-1 items-center justify-between gap-4 border border-transparent text-left hover:border-transparent focus:border-transparent focus:outline-none focus:shadow-none focus-visible:border-transparent focus-visible:outline-none focus-visible:shadow-none"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <motion.span
+                              layout={false}
+                              initial={false}
+                              animate={{
+                                backgroundColor: isSelected
+                                  ? "rgba(0, 200, 150, 1)"
+                                  : "rgba(13, 17, 23, 1)",
+                                borderColor: isSelected
+                                  ? "rgba(0, 200, 150, 1)"
+                                  : "rgba(48, 54, 61, 1)",
+                                color: isSelected
+                                  ? "rgba(13, 17, 23, 1)"
+                                  : "rgba(13, 17, 23, 0)",
+                                scale: isSelected ? 1 : 0.98,
+                              }}
+                              transition={{ duration: 0.16, ease: "easeOut" }}
+                              aria-hidden="true"
+                              className={`inline-flex h-5 w-5 items-center justify-center rounded border text-xs font-bold ${
+                                isSelected ? "text-[#0D1117]" : "text-transparent"
+                              }`}
+                            >
+                              ✓
+                            </motion.span>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[#E6EDF3]">
+                                {option.name}
+                              </p>
+                              <p className="text-xs text-[#8B949E]">
+                                {option.wordCount} words
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        {isSelected ? (
-                          <span className="inline-flex min-w-[5.5rem] items-center justify-center gap-1 rounded-full border border-[#00C896]/35 bg-[#00C896]/10 px-2.5 py-1 text-xs font-medium text-[#E6EDF3]">
-                            <span aria-hidden="true">✓</span>
-                            <span>Selected</span>
-                          </span>
-                        ) : (
-                          <span className="min-w-[5.5rem]" aria-hidden="true" />
-                        )}
-                      </button>
+                          {isSelected ? (
+                            <span className="inline-flex min-w-[5.5rem] items-center justify-center gap-1 rounded-full border border-[#00C896]/35 bg-[#00C896]/10 px-2.5 py-1 text-xs font-medium text-[#E6EDF3]">
+                              <span aria-hidden="true">✓</span>
+                              <span>Selected</span>
+                            </span>
+                          ) : (
+                            <span className="min-w-[5.5rem]" aria-hidden="true" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onEdit(option.name)}
+                          className="inline-flex min-h-10 min-w-[4.5rem] items-center justify-center rounded-xl border border-[#30363D] bg-[#0D1117] px-4 py-2 text-xs font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -378,6 +407,7 @@ export function QuizSelectionScreen() {
     [selectedSets],
   );
 
+  const canEditSelection = selectedNames.length === 1;
   const isReady = selectedNames.length > 0;
 
   function toggleSelection(name: string) {
@@ -392,6 +422,10 @@ export function QuizSelectionScreen() {
     navigate("/quiz", {
       state: { selectedQuizzes: selectedNames },
     });
+  }
+
+  function handleEditSet(name: string) {
+    navigate(`/word-sets/${encodeURIComponent(name)}/edit`);
   }
 
   return (
@@ -433,6 +467,7 @@ export function QuizSelectionScreen() {
                   <MultiSelectDropdown
                     options={allSets}
                     selectedNames={selectedNames}
+                    onEdit={handleEditSet}
                     onToggle={toggleSelection}
                     disabled={isLoading || allSets.length === 0}
                   />
@@ -457,6 +492,7 @@ export function QuizSelectionScreen() {
                       <SelectionChip
                         key={option.name}
                         label={option.name}
+                        onEdit={() => handleEditSet(option.name)}
                         onRemove={() => toggleSelection(option.name)}
                       />
                     ))}
@@ -501,7 +537,7 @@ export function QuizSelectionScreen() {
               </QuizButton>
             </motion.div>
 
-            <div className="flex justify-center pt-1">
+            <div className="flex justify-center border-t border-[#30363D] pt-2">
               <Link
                 to="/import"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[14px] text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"

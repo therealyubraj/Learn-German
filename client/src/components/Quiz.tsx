@@ -20,7 +20,7 @@ export function Quiz() {
     const newItem = quizEngine.selectNextWord();
     setCurrentItem(newItem);
 
-    writeStats(quizEngine.getChecksum() as string, quizEngine.getStats())
+    writeStats(quizEngine.getStats())
       .then((v) => {
         if (!v) {
           console.error("Failed to write stats?");
