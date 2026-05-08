@@ -59,11 +59,10 @@ class QuizEngine {
   }
 
   // ---- Selection ----
-  selectNextWord(): QuizItem {
-    const now = Date.now();
-
+  selectNextWord(currentWord?: QuizItem): QuizItem {
     const learning: QuizItem[] = [];
     const dormant: QuizItem[] = [];
+    const review: QuizItem[] = [];
 
     for (const word of this.words) {
       const stat = this.stats[getQuizItemKey(word)];
@@ -71,8 +70,13 @@ class QuizEngine {
 
       if (stat.lastReviewed === 0) {
         dormant.push(word);
-      } else if (stat.mastery < this.TARGET_MASTERY) {
+      } else if (
+        stat.mastery < this.TARGET_MASTERY ||
+        stat.exposureCount < this.MIN_EXPOSURES_FOR_MASTERY
+      ) {
         learning.push(word);
+      } else {
+        review.push(word);
       }
     }
 
@@ -96,7 +100,23 @@ class QuizEngine {
       return !this.recentlyShownKeys.includes(key);
     });
 
-    const pool = eligible.length > 0 ? eligible : learning;
+    let pool =
+      eligible.length > 0
+        ? eligible
+        : learning.length > 0
+          ? learning
+          : this.getReviewPool(review);
+
+    if (currentWord) {
+      const currentKey = getQuizItemKey(currentWord);
+      const withoutCurrentWord = pool.filter(
+        (word) => getQuizItemKey(word) !== currentKey
+      );
+
+      if (withoutCurrentWord.length > 0) {
+        pool = withoutCurrentWord;
+      }
+    }
 
     pool.sort((a, b) => {
       const sa = this.stats[getQuizItemKey(a)];
@@ -112,6 +132,9 @@ class QuizEngine {
     });
 
     const chosen = pool[0];
+    if (!chosen) {
+      throw new Error("Quiz engine could not select a next word.");
+    }
 
     this.recordShown(chosen);
 
@@ -151,6 +174,19 @@ class QuizEngine {
     this.recordShown(word);
 
     return word;
+  }
+
+  private getReviewPool(review: QuizItem[]): QuizItem[] {
+    const eligibleReview = review.filter((word) => {
+      const key = getQuizItemKey(word);
+      return !this.recentlyShownKeys.includes(key);
+    });
+
+    if (eligibleReview.length > 0) {
+      return eligibleReview;
+    }
+
+    return review.length > 0 ? review : this.words;
   }
 
   private recordShown(word: QuizItem) {

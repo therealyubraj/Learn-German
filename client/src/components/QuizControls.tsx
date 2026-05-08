@@ -90,11 +90,18 @@ export function QuizControls({
     }
   }
 
+  async function handleRevealSpeech() {
+    await speakSequence([
+      item.TTS || item.RHS,
+      settings.tts.speakRemarksAfterWord ? item.remarks ?? "" : "",
+    ]);
+  }
+
   const handleCheckAnswer = () => {
     const isCorrect = inputValue.toLowerCase() === item.RHS.toLowerCase();
     if (isCorrect) {
-      handlePlaySound();
       setControlState("guessedCorrect");
+      handleRevealSpeech();
     } else {
       setIsIncorrectGuess(true);
       setTimeout(() => {
@@ -104,9 +111,9 @@ export function QuizControls({
   };
 
   const handleGiveUp = () => {
-    handlePlaySound();
     setInputValue(item.RHS);
     setControlState("givenUp");
+    handleRevealSpeech();
   };
 
   const handleNextQuestion = () => {
@@ -114,10 +121,7 @@ export function QuizControls({
   };
 
   const handlePlaySound = async () => {
-    await speakSequence([
-      item.TTS || item.RHS,
-      settings.tts.speakRemarksAfterWord ? item.remarks ?? "" : "",
-    ]);
+    await speakSequence([item.TTS || item.RHS]);
   };
 
   const handleSpeakRemarks = async () => {

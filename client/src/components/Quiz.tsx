@@ -17,7 +17,7 @@ export function Quiz() {
     quizEngine.updateStats(currentItem, guessedCorrectly);
 
     // and get a new word and rerender
-    const newItem = quizEngine.selectNextWord();
+    const newItem = quizEngine.selectNextWord(currentItem);
     setCurrentItem(newItem);
 
     writeStats(quizEngine.getStats())
