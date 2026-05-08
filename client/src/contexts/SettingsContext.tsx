@@ -27,6 +27,7 @@ export const defaultSettings: AppSettings = {
     rate: 1,
     pitch: 1,
     volume: 1,
+    speakRemarksAfterWord: false,
   },
 };
 

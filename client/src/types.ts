@@ -35,6 +35,7 @@ export type AppSettings = {
     rate: number;
     pitch: number;
     volume: number;
+    speakRemarksAfterWord: boolean;
   };
 };
 

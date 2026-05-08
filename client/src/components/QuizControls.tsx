@@ -73,10 +73,18 @@ export function QuizControls({
   const canRevealAnswer = controlState !== "guessing";
   const hasRemarks = Boolean(item.remarks?.trim());
 
-  async function speakText(text: string) {
+  async function speakSequence(texts: string[]) {
+    const nonEmptyTexts = texts.filter((text) => text.trim() !== "");
+
+    if (nonEmptyTexts.length === 0) {
+      return;
+    }
+
     try {
       setIsSpeaking(true);
-      await tts.speak(text, settings.tts);
+      for (const text of nonEmptyTexts) {
+        await tts.speak(text, settings.tts);
+      }
     } finally {
       setIsSpeaking(false);
     }
@@ -106,7 +114,10 @@ export function QuizControls({
   };
 
   const handlePlaySound = async () => {
-    await speakText(item.TTS || item.RHS);
+    await speakSequence([
+      item.TTS || item.RHS,
+      settings.tts.speakRemarksAfterWord ? item.remarks ?? "" : "",
+    ]);
   };
 
   const handleSpeakRemarks = async () => {
@@ -114,7 +125,7 @@ export function QuizControls({
       return;
     }
 
-    await speakText(item.remarks);
+    await speakSequence([item.remarks]);
   };
 
   const hasRemarksTranslation = Boolean(item.remarksEN?.trim());

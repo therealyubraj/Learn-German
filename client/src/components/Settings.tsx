@@ -34,7 +34,8 @@ const actionButtonClassName =
 export function Settings() {
   const { settings, setSettings } = useSettings();
   const { vim, quiz, tts: ttsSettings } = settings;
-  const { pitch, rate: speed, volume, voiceName } = ttsSettings;
+  const { pitch, rate: speed, volume, voiceName, speakRemarksAfterWord } =
+    ttsSettings;
 
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [previewText, setPreviewText] = useState(
@@ -183,6 +184,48 @@ export function Settings() {
                   ))}
                 </select>
               </div>
+
+              <label
+                htmlFor="speak-remarks-after-word-toggle"
+                className="flex cursor-pointer items-center justify-between gap-6 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[18px]"
+              >
+                <div>
+                  <span className="block text-base font-medium text-[#E6EDF3]">
+                    Speak remarks after word
+                  </span>
+                  <span className="mt-1 block text-sm text-[#8B949E]">
+                    When enabled, answer playback reads the word first and then the remarks.
+                  </span>
+                </div>
+                <span
+                  className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-colors ${
+                    speakRemarksAfterWord
+                      ? "border-[#00C896] bg-[#00C896]/30"
+                      : "border-[#30363D] bg-[#1C232D]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    id="speak-remarks-after-word-toggle"
+                    className="sr-only"
+                    checked={speakRemarksAfterWord}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        tts: {
+                          ...ttsSettings,
+                          speakRemarksAfterWord: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                  <span
+                    className={`absolute left-1 h-6 w-6 rounded-full bg-[#E6EDF3] transition-transform ${
+                      speakRemarksAfterWord ? "translate-x-6 bg-[#00C896]" : ""
+                    }`}
+                  />
+                </span>
+              </label>
 
               <div className="grid gap-5 md:grid-cols-3">
                 <div>
