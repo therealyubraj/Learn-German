@@ -128,6 +128,14 @@ export async function getWordListByName(name: string): Promise<StoredWordList> {
   return JSON.parse(await storage.readFile(getWordListPath(name)));
 }
 
+export async function deleteWordListByName(name: string): Promise<void> {
+  const success = await storage.deleteFile(getWordListPath(name));
+
+  if (!success) {
+    throw new Error("Could not delete word set.");
+  }
+}
+
 export async function saveEditedWordList(
   name: string,
   list: WordList

@@ -32,6 +32,27 @@ const buttonStyles = {
     "border-[#30363D] bg-[#0D1117] text-[#8B949E] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]",
 };
 
+function ButtonLabel({
+  label,
+  vimKey,
+  showVimKey,
+}: {
+  label: string;
+  vimKey?: string;
+  showVimKey: boolean;
+}) {
+  return (
+    <span className="flex w-full items-center justify-between gap-3">
+      <span>{label}</span>
+      {showVimKey && vimKey ? (
+        <span className="inline-flex min-w-[3.25rem] items-center justify-center rounded-full border border-current/20 bg-[#0D1117]/40 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em]">
+          {vimKey}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function QuizControls({
   item,
   onNext,
@@ -43,14 +64,25 @@ export function QuizControls({
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isIncorrectGuess, setIsIncorrectGuess] = useState<boolean>(false);
   const [inputValue, setInputValue] = useState<string>("");
+  const [isRemarksTranslationVisible, setIsRemarksTranslationVisible] =
+    useState<boolean>(false);
 
   const { settings } = useSettings();
+  const showVimBindings = settings.vim.enabled;
 
-  // --- Placeholder Click Handlers ---
+  const canRevealAnswer = controlState !== "guessing";
+  const hasRemarks = Boolean(item.remarks?.trim());
+
+  async function speakText(text: string) {
+    try {
+      setIsSpeaking(true);
+      await tts.speak(text, settings.tts);
+    } finally {
+      setIsSpeaking(false);
+    }
+  }
 
   const handleCheckAnswer = () => {
-    // In a real app, you'd check the answer value here.
-    // For this placeholder, we'll just randomly decide if it was correct.
     const isCorrect = inputValue.toLowerCase() === item.RHS.toLowerCase();
     if (isCorrect) {
       handlePlaySound();
@@ -64,7 +96,6 @@ export function QuizControls({
   };
 
   const handleGiveUp = () => {
-    // Giving up always marks the answer as incorrect.
     handlePlaySound();
     setInputValue(item.RHS);
     setControlState("givenUp");
@@ -75,10 +106,18 @@ export function QuizControls({
   };
 
   const handlePlaySound = async () => {
-    setIsSpeaking(true);
-    await tts.speak(item.TTS || item.RHS, settings.tts);
-    setIsSpeaking(false);
+    await speakText(item.TTS || item.RHS);
   };
+
+  const handleSpeakRemarks = async () => {
+    if (!item.remarks?.trim()) {
+      return;
+    }
+
+    await speakText(item.remarks);
+  };
+
+  const hasRemarksTranslation = Boolean(item.remarksEN?.trim());
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,10 +149,61 @@ export function QuizControls({
         />
       </div>
 
-      <div className="min-h-12 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-center text-sm font-medium text-[#E6EDF3]">
-        {controlState === "guessing"
-          ? "Type the German translation, then check your answer."
-          : item.remarks || `Correct answer: ${item.RHS}`}
+      <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
+        {controlState === "guessing" ? (
+          <p className="text-center text-sm font-medium text-[#E6EDF3]">
+            Type the German translation, then check your answer.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-3">
+              <p className="text-sm font-medium text-[#E6EDF3]">
+                {item.remarks || `Correct answer: ${item.RHS}`}
+              </p>
+              {hasRemarksTranslation && isRemarksTranslationVisible ? (
+                <p className="text-sm text-[#8B949E]">{item.remarksEN}</p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-3">
+              {hasRemarksTranslation ? (
+                <button
+                  type="button"
+                  className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 px-4 py-2 text-xs`}
+                  onClick={() =>
+                    setIsRemarksTranslationVisible((current) => !current)
+                  }
+                  disabled={isSpeaking}
+                  data-vim-key="t"
+                >
+                  <ButtonLabel
+                    label={
+                      isRemarksTranslationVisible
+                        ? "Hide translation"
+                        : "Show translation"
+                    }
+                    vimKey="T"
+                    showVimKey={showVimBindings}
+                  />
+                </button>
+              ) : null}
+              {hasRemarks ? (
+                <button
+                  type="button"
+                  className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 shrink-0 px-4 py-2 text-xs`}
+                  onClick={handleSpeakRemarks}
+                  disabled={isSpeaking}
+                  data-vim-key="r"
+                >
+                  <ButtonLabel
+                    label="Speak remarks"
+                    vimKey="R"
+                    showVimKey={showVimBindings}
+                  />
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -123,16 +213,24 @@ export function QuizControls({
           disabled={controlState !== "guessing" || isSpeaking}
           data-vim-key="Enter"
         >
-          Check answer
+          <ButtonLabel
+            label="Check answer"
+            vimKey="Enter"
+            showVimKey={showVimBindings}
+          />
         </button>
         <div className="grid gap-4 sm:grid-cols-3">
           <button
             className={`${buttonStyles.base} ${buttonStyles.quiet}`}
             onClick={handlePlaySound}
-            disabled={controlState === "guessing" || isSpeaking}
+            disabled={!canRevealAnswer || isSpeaking}
             data-vim-key="s"
           >
-            Listen
+            <ButtonLabel
+              label="Listen"
+              vimKey="S"
+              showVimKey={showVimBindings}
+            />
           </button>
           <button
             className={`${buttonStyles.base} ${buttonStyles.secondary}`}
@@ -140,7 +238,11 @@ export function QuizControls({
             disabled={controlState !== "guessing" || isSpeaking}
             data-vim-key="g"
           >
-            Give up
+            <ButtonLabel
+              label="Give up"
+              vimKey="G"
+              showVimKey={showVimBindings}
+            />
           </button>
           <button
             className={`${buttonStyles.base} ${buttonStyles.secondary}`}
@@ -148,7 +250,11 @@ export function QuizControls({
             disabled={controlState === "guessing" || isSpeaking}
             data-vim-key="n"
           >
-            Next question
+            <ButtonLabel
+              label="Next question"
+              vimKey="N"
+              showVimKey={showVimBindings}
+            />
           </button>
         </div>
       </div>

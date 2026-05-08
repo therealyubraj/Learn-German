@@ -84,6 +84,14 @@ export function UserImport() {
         }
 
         if (
+          word.remarksEN !== undefined &&
+          word.remarksEN !== null &&
+          typeof word.remarksEN !== "string"
+        ) {
+          throw new Error(`remarksEN must be a string at index ${i}.`);
+        }
+
+        if (
           word.TTS !== undefined &&
           word.TTS !== null &&
           typeof word.TTS !== "string"
@@ -95,6 +103,7 @@ export function UserImport() {
           LHS: word.LHS.trim(),
           RHS: word.RHS.trim(),
           remarks: word.remarks?.trim() || undefined,
+          remarksEN: word.remarksEN?.trim() || undefined,
           TTS: word.TTS?.trim() || undefined,
         });
       }
@@ -155,7 +164,7 @@ export function UserImport() {
             <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm leading-6 text-[#8B949E]">
               Expected format:
               <code className="ml-2 rounded-lg border border-[#30363D] bg-[#161B22] px-2 py-1 text-xs text-[#E6EDF3]">
-                Array&lt;{"{ LHS: string; RHS: string; remarks?: string; TTS?: string }"}&gt;
+                Array&lt;{"{ LHS: string; RHS: string; remarks?: string; remarksEN?: string; TTS?: string }"}&gt;
               </code>
             </div>
 
@@ -192,7 +201,8 @@ export function UserImport() {
   {
     "LHS": "das Haus",
     "RHS": "the house",
-    "remarks": "neuter noun",
+    "remarks": "neuter noun in German",
+    "remarksEN": "The noun is grammatically neuter.",
     "TTS": "das Haus"
   },
   {

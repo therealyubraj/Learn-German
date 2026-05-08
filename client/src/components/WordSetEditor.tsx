@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getWordListByName, saveEditedWordList } from "../FS/utils";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  deleteWordListByName,
+  getWordListByName,
+  saveEditedWordList,
+} from "../FS/utils";
 import { QuizItem } from "../types";
 import { showToast } from "../Toast";
 
@@ -9,6 +13,7 @@ type EditableQuizItem = {
   LHS: string;
   RHS: string;
   remarks: string;
+  remarksEN: string;
   TTS: string;
 };
 
@@ -21,6 +26,7 @@ function toEditableItem(item: QuizItem): EditableQuizItem {
     LHS: item.LHS,
     RHS: item.RHS,
     remarks: item.remarks ?? "",
+    remarksEN: item.remarksEN ?? "",
     TTS: item.TTS ?? "",
   };
 }
@@ -31,19 +37,24 @@ function getEmptyItem(): EditableQuizItem {
     LHS: "",
     RHS: "",
     remarks: "",
+    remarksEN: "",
     TTS: "",
   };
 }
 
 export function WordSetEditor() {
   const { name } = useParams();
+  const navigate = useNavigate();
   const wordSetName = name ? decodeURIComponent(name) : null;
   const [items, setItems] = useState<EditableQuizItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const [isViewingAllItems, setIsViewingAllItems] = useState(false);
+  const [jsonAppendInput, setJsonAppendInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function loadWordSet() {
@@ -100,6 +111,116 @@ export function WordSetEditor() {
     });
   }
 
+  async function handleDeleteWordSet() {
+    if (!wordSetName) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete the word set "${wordSetName}"? This removes the saved set from OPFS.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+      await deleteWordListByName(wordSetName);
+      showToast("Word set deleted.");
+      navigate("/quiz-selection");
+    } catch (deleteError) {
+      const message = (deleteError as Error).message;
+      setError(message);
+      showToast(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  function parseQuizItemsFromJSON(jsonInput: string): EditableQuizItem[] {
+    let parsedJSON: unknown;
+
+    try {
+      parsedJSON = JSON.parse(jsonInput);
+    } catch {
+      throw new Error("The JSON append input is not valid.");
+    }
+
+    if (!Array.isArray(parsedJSON)) {
+      throw new Error("The JSON append input must be an array.");
+    }
+
+    if (parsedJSON.length === 0) {
+      throw new Error("The JSON append input is empty.");
+    }
+
+    return parsedJSON.map((item, index) => {
+      const candidate = item as Partial<QuizItem>;
+
+      if (typeof candidate.LHS !== "string" || candidate.LHS.trim() === "") {
+        throw new Error(`LHS is empty at imported item ${index + 1}.`);
+      }
+
+      if (typeof candidate.RHS !== "string" || candidate.RHS.trim() === "") {
+        throw new Error(`RHS is empty at imported item ${index + 1}.`);
+      }
+
+      if (
+        candidate.remarks !== undefined &&
+        candidate.remarks !== null &&
+        typeof candidate.remarks !== "string"
+      ) {
+        throw new Error(`remarks must be a string at imported item ${index + 1}.`);
+      }
+
+      if (
+        candidate.remarksEN !== undefined &&
+        candidate.remarksEN !== null &&
+        typeof candidate.remarksEN !== "string"
+      ) {
+        throw new Error(
+          `remarksEN must be a string at imported item ${index + 1}.`,
+        );
+      }
+
+      if (
+        candidate.TTS !== undefined &&
+        candidate.TTS !== null &&
+        typeof candidate.TTS !== "string"
+      ) {
+        throw new Error(`TTS must be a string at imported item ${index + 1}.`);
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        LHS: candidate.LHS.trim(),
+        RHS: candidate.RHS.trim(),
+        remarks: candidate.remarks?.trim() ?? "",
+        remarksEN: candidate.remarksEN?.trim() ?? "",
+        TTS: candidate.TTS?.trim() ?? "",
+      };
+    });
+  }
+
+  function handleAppendJSONList() {
+    try {
+      setError(null);
+      const appendedItems = parseQuizItemsFromJSON(jsonAppendInput);
+
+      setItems((current) => [...current, ...appendedItems]);
+      setJsonAppendInput("");
+      setSearchQuery("");
+      setHighlightedItemId(null);
+      showToast(`Appended ${appendedItems.length} item${appendedItems.length === 1 ? "" : "s"}.`);
+    } catch (appendError) {
+      const message = (appendError as Error).message;
+      setError(message);
+      showToast(message);
+    }
+  }
+
   async function handleSave() {
     if (!wordSetName) {
       return;
@@ -117,6 +238,7 @@ export function WordSetEditor() {
         const LHS = item.LHS.trim();
         const RHS = item.RHS.trim();
         const remarks = item.remarks.trim();
+        const remarksEN = item.remarksEN.trim();
         const TTS = item.TTS.trim();
 
         if (LHS === "") {
@@ -131,6 +253,7 @@ export function WordSetEditor() {
           LHS,
           RHS,
           remarks: remarks || undefined,
+          remarksEN: remarksEN || undefined,
           TTS: TTS || undefined,
         };
       });
@@ -151,6 +274,12 @@ export function WordSetEditor() {
   const visibleItems = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
+    if (isViewingAllItems) {
+      return items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.id !== highlightedItemId);
+    }
+
     if (normalizedQuery === "") {
       return [];
     }
@@ -161,7 +290,7 @@ export function WordSetEditor() {
       .filter(({ item }) =>
         `${item.LHS} ${item.RHS}`.toLowerCase().includes(normalizedQuery),
       );
-  }, [highlightedItemId, items, searchQuery]);
+  }, [highlightedItemId, isViewingAllItems, items, searchQuery]);
 
   const highlightedItemEntry = useMemo(() => {
     if (!highlightedItemId) {
@@ -260,6 +389,21 @@ export function WordSetEditor() {
               placeholder="Optional feedback or note"
             />
           </div>
+
+          <div className="flex flex-col gap-2 lg:col-span-2">
+            <label className="text-sm font-medium text-[#A6ADC8]">
+              Remarks Translation (EN)
+            </label>
+            <input
+              value={item.remarksEN}
+              onChange={(event) =>
+                updateItem(index, "remarksEN", event.target.value)
+              }
+              className={fieldClassName}
+              type="text"
+              placeholder="Optional English translation for the remarks"
+            />
+          </div>
         </div>
       </div>
     );
@@ -310,6 +454,48 @@ export function WordSetEditor() {
                 keeps the same quiz-item identity, so existing progress is reused.
               </div>
 
+              <div className="rounded-3xl border border-[#30363D] bg-[#0D1117] p-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-base font-medium text-[#A6ADC8]">
+                      Append from JSON
+                    </h2>
+                    <p className="text-sm text-[#8B949E]">
+                      Paste a JSON array to append multiple quiz items to this set.
+                    </p>
+                  </div>
+
+                  <textarea
+                    value={jsonAppendInput}
+                    onChange={(event) => setJsonAppendInput(event.target.value)}
+                    spellCheck={false}
+                    className={`${fieldClassName} min-h-[12rem] resize-y font-mono text-sm leading-7`}
+                    placeholder={`[
+  {
+    "LHS": "dürfen",
+    "RHS": "may",
+    "remarks": "modal verb",
+    "remarksEN": "This is a modal verb.",
+    "TTS": "dürfen"
+  }
+]`}
+                  />
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[#8B949E]">
+                      Accepted fields: <code className="rounded bg-[#161B22] px-1.5 py-0.5 text-xs text-[#E6EDF3]">LHS</code>, <code className="rounded bg-[#161B22] px-1.5 py-0.5 text-xs text-[#E6EDF3]">RHS</code>, optional <code className="rounded bg-[#161B22] px-1.5 py-0.5 text-xs text-[#E6EDF3]">remarks</code>, optional <code className="rounded bg-[#161B22] px-1.5 py-0.5 text-xs text-[#E6EDF3]">remarksEN</code>, optional <code className="rounded bg-[#161B22] px-1.5 py-0.5 text-xs text-[#E6EDF3]">TTS</code>.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAppendJSONList}
+                      className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#161B22] px-[22px] py-[14px] text-sm font-medium text-[#E6EDF3] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+                    >
+                      Append JSON list
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="sticky top-24 z-10 rounded-3xl border border-[#30363D] bg-[#0D1117]/95 p-5 backdrop-blur-sm">
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
                   <div className="flex flex-col gap-3">
@@ -320,7 +506,9 @@ export function WordSetEditor() {
                       <p className="mt-1 text-sm text-[#8B949E]">
                         {items.length} item{items.length === 1 ? "" : "s"} in this
                         set
-                        {searchQuery.trim() !== ""
+                        {isViewingAllItems
+                          ? ` • showing all ${visibleItems.length}`
+                          : searchQuery.trim() !== ""
                           ? ` • ${visibleItems.length} match${
                               visibleItems.length === 1 ? "" : "es"
                             }`
@@ -342,6 +530,7 @@ export function WordSetEditor() {
                         value={searchQuery}
                         onChange={(event) => {
                           setSearchQuery(event.target.value);
+                          setIsViewingAllItems(false);
                           if (event.target.value.trim() !== "") {
                             setHighlightedItemId(null);
                           }
@@ -356,7 +545,7 @@ export function WordSetEditor() {
                   <div className="flex flex-col gap-3 xl:w-[12rem]">
                     <button
                       type="button"
-                      disabled={isSaving || isLoading}
+                      disabled={isSaving || isLoading || isDeleting}
                       onClick={handleSave}
                       className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#00C896] bg-[#00C896] px-[24px] py-[14px] text-sm font-semibold text-[#0D1117] transition-colors hover:bg-[#00FF9C] disabled:cursor-not-allowed disabled:border-[#30363D] disabled:bg-[#1C232D] disabled:text-[#8B949E]"
                     >
@@ -365,10 +554,31 @@ export function WordSetEditor() {
 
                     <button
                       type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setHighlightedItemId(null);
+                        setIsViewingAllItems(true);
+                      }}
+                      className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#161B22] px-[22px] py-[14px] text-sm font-medium text-[#E6EDF3] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+                    >
+                      View all
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={handleAddItem}
                       className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#161B22] px-[22px] py-[14px] text-sm font-medium text-[#E6EDF3] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
                     >
                       Add item
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSaving || isLoading || isDeleting}
+                      onClick={handleDeleteWordSet}
+                      className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#F85149]/45 bg-[#F85149]/10 px-[22px] py-[14px] text-sm font-medium text-[#FFB3AD] transition-colors hover:border-[#F85149] hover:bg-[#F85149]/16 hover:text-[#FFD2CD] disabled:cursor-not-allowed disabled:border-[#30363D] disabled:bg-[#1C232D] disabled:text-[#8B949E]"
+                    >
+                      {isDeleting ? "Deleting..." : "Delete set"}
                     </button>
                   </div>
                 </div>
@@ -396,6 +606,8 @@ export function WordSetEditor() {
                   <div className="rounded-2xl border border-dashed border-[#30363D] bg-[#0D1117] px-[18px] py-[20px] text-center text-sm text-[#8B949E]">
                     {highlightedItemEntry
                       ? "Search to edit an existing item, or continue working on the draft above."
+                      : isViewingAllItems
+                      ? "No items to show."
                       : searchQuery.trim() === ""
                       ? "Search to edit an existing item, or add a new one."
                       : "No items match the current search. Clear the filter or add a new item."}

@@ -2,6 +2,7 @@ export type QuizItem = {
   LHS: string;
   RHS: string;
   remarks?: string;
+  remarksEN?: string;
   TTS?: string;
 };
 
