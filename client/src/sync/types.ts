@@ -37,6 +37,7 @@ export type StartTotpEnrollmentResponse = {
   expiresAt: string;
   emailSent: boolean;
   devEnrollmentLink?: string;
+  wouldFailInProduction?: boolean;
 };
 
 export type VerifyOtpResponse = {

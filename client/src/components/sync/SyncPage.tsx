@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useSync } from "../../sync/SyncContext";
 import { getDefaultDeviceName } from "../../sync/storage";
 
+type AuthMode = "signIn" | "signUp";
+
 const fieldClassName =
   "w-full rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm text-[#E6EDF3] outline-none transition-colors placeholder:text-[#8B949E] focus:border-[#00C896] focus:ring-1 focus:ring-[#00C896]/30";
 
@@ -48,6 +50,39 @@ function SyncSection({
   );
 }
 
+function AuthModeButton({
+  isActive,
+  title,
+  description,
+  onClick,
+}: {
+  isActive: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[5.75rem] flex-col items-start justify-center rounded-[1.35rem] border px-5 py-4 text-left transition-colors ${
+        isActive
+          ? "border-[#00C896] bg-[#00C896]/12 text-[#E6EDF3] shadow-[0_0_0_1px_rgba(0,200,150,0.18)_inset]"
+          : "border-[#30363D] bg-[#0D1117] text-[#8B949E] hover:border-[#4A5563] hover:text-[#E6EDF3]"
+      }`}
+    >
+      <span
+        className={`text-sm font-semibold ${
+          isActive ? "text-[#00FF9C]" : "text-[#E6EDF3]"
+        }`}
+      >
+        {title}
+      </span>
+      <span className="mt-1 text-xs leading-5">{description}</span>
+    </button>
+  );
+}
+
 export function SyncPage() {
   const {
     session,
@@ -65,13 +100,18 @@ export function SyncPage() {
     syncNow,
     logoutFromSync,
   } = useSync();
-  const [email, setEmail] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("signIn");
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signUpEmail, setSignUpEmail] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [deviceName, setDeviceName] = useState(getDefaultDeviceName());
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null);
   const [isRequestingEnrollment, setIsRequestingEnrollment] = useState(false);
   const [isVerifyingTotp, setIsVerifyingTotp] = useState(false);
-  const emailValidationError = getGmailValidationError(email);
+  const signInEmailValidationError = getGmailValidationError(signInEmail);
+  const signUpEmailValidationError = getGmailValidationError(signUpEmail);
 
   const hasRemoteDeviceAhead =
     !!session &&
@@ -107,13 +147,19 @@ export function SyncPage() {
 
   async function handleRequestEnrollment() {
     setIsRequestingEnrollment(true);
+    setSignUpError(null);
     try {
-      const response = await requestTotpEnrollmentLink(email);
+      const response = await requestTotpEnrollmentLink(signUpEmail);
       setEnrollmentStatus(
         response.devEnrollmentLink
-          ? `Development enrollment link: ${response.devEnrollmentLink}`
+          ? response.wouldFailInProduction
+            ? `Development override: an active enrollment already existed for this email, so a fresh local setup link was generated. Production would reject this request. Link: ${response.devEnrollmentLink}`
+            : `Development enrollment link: ${response.devEnrollmentLink}`
           : `Enrollment email sent. The link expires at ${new Date(response.expiresAt).toLocaleString()}.`,
       );
+    } catch (requestError) {
+      setEnrollmentStatus(null);
+      setSignUpError((requestError as Error).message);
     } finally {
       setIsRequestingEnrollment(false);
     }
@@ -121,9 +167,12 @@ export function SyncPage() {
 
   async function handleTotpLogin() {
     setIsVerifyingTotp(true);
+    setSignInError(null);
     try {
-      await loginWithTotpCode(email, totpCode, deviceName);
+      await loginWithTotpCode(signInEmail, totpCode, deviceName);
       setTotpCode("");
+    } catch (loginError) {
+      setSignInError((loginError as Error).message);
     } finally {
       setIsVerifyingTotp(false);
     }
@@ -147,121 +196,155 @@ export function SyncPage() {
         {!session ? (
           <>
             <SyncSection
-              title="Sign In with TOTP"
-              description="Enter your Gmail address and the current code from your authenticator app."
+              title="Access Sync"
+              description={
+                authMode === "signIn"
+                  ? "Enter your Gmail address and the current code from your authenticator app."
+                  : "Request a one-time setup link to enroll this Gmail address with TOTP."
+              }
             >
-              <div className="flex flex-col gap-5">
-                <div>
-                  <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
-                    Gmail Address
-                  </label>
-                  <input
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className={fieldClassName}
-                    type="email"
-                    placeholder="you@gmail.com"
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <AuthModeButton
+                    isActive={authMode === "signIn"}
+                    title="Sign In"
+                    description="Use an existing authenticator code."
+                    onClick={() => setAuthMode("signIn")}
                   />
-                  {emailValidationError ? (
-                    <p className="mt-3 text-sm font-medium text-[#FFB3AD]">
-                      {emailValidationError}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
-                    Device Name
-                  </label>
-                  <input
-                    value={deviceName}
-                    onChange={(event) => setDeviceName(event.target.value)}
-                    className={fieldClassName}
-                    type="text"
-                    placeholder="My laptop"
+                  <AuthModeButton
+                    isActive={authMode === "signUp"}
+                    title="Set Up TOTP"
+                    description="Request a setup link for a new device."
+                    onClick={() => setAuthMode("signUp")}
                   />
                 </div>
 
-                <div>
-                  <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
-                    TOTP Code
-                  </label>
-                  <input
-                    value={totpCode}
-                    onChange={(event) => setTotpCode(event.target.value)}
-                    className={fieldClassName}
-                    type="text"
-                    placeholder="Enter the 6-digit code"
-                  />
-                </div>
+                {authMode === "signIn" ? (
+                  <div className="flex flex-col gap-5 rounded-[1.8rem] border border-[#30363D] bg-[#0D1117] px-5 py-5 sm:px-6">
+                    <div>
+                      <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
+                        Gmail Address
+                      </label>
+                      <input
+                        value={signInEmail}
+                        onChange={(event) => {
+                          setSignInEmail(event.target.value);
+                          setSignInError(null);
+                        }}
+                        className={fieldClassName}
+                        type="email"
+                        placeholder="you@gmail.com"
+                      />
+                      {signInEmailValidationError ? (
+                        <p className="mt-3 text-sm font-medium text-[#FFB3AD]">
+                          {signInEmailValidationError}
+                        </p>
+                      ) : null}
+                    </div>
 
-                {error ? (
-                  <div className="rounded-2xl border border-[#F85149]/45 bg-[#F85149]/10 px-[18px] py-[14px] text-sm font-medium text-[#FFB3AD]">
-                    {error}
+                    <div>
+                      <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
+                        Device Name
+                      </label>
+                      <input
+                        value={deviceName}
+                        onChange={(event) => setDeviceName(event.target.value)}
+                        className={fieldClassName}
+                        type="text"
+                        placeholder="My laptop"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
+                        TOTP Code
+                      </label>
+                      <input
+                        value={totpCode}
+                        onChange={(event) => {
+                          setTotpCode(event.target.value);
+                          setSignInError(null);
+                        }}
+                        className={fieldClassName}
+                        type="text"
+                        placeholder="Enter the 6-digit code"
+                      />
+                    </div>
+
+                    {signInError ? (
+                      <div className="rounded-2xl border border-[#F85149]/45 bg-[#F85149]/10 px-[18px] py-[14px] text-sm font-medium text-[#FFB3AD]">
+                        {signInError}
+                      </div>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      disabled={
+                        isHydrating ||
+                        isVerifyingTotp ||
+                        signInEmail.trim() === "" ||
+                        signInEmailValidationError !== null ||
+                        totpCode.trim() === ""
+                      }
+                      onClick={() => void handleTotpLogin()}
+                      className={`${actionButtonClassName} border-[#00C896] bg-[#00C896] text-[#0D1117] hover:bg-[#00FF9C]`}
+                    >
+                      {isVerifyingTotp ? "Signing in..." : "Sign In"}
+                    </button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="flex flex-col gap-5 rounded-[1.8rem] border border-[#30363D] bg-[#0D1117] px-5 py-5 sm:px-6">
+                    <div>
+                      <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
+                        Gmail Address
+                      </label>
+                      <input
+                        value={signUpEmail}
+                        onChange={(event) => {
+                          setSignUpEmail(event.target.value);
+                          setSignUpError(null);
+                          setEnrollmentStatus(null);
+                        }}
+                        className={fieldClassName}
+                        type="email"
+                        placeholder="you@gmail.com"
+                      />
+                      {signUpEmailValidationError ? (
+                        <p className="mt-3 text-sm font-medium text-[#FFB3AD]">
+                          {signUpEmailValidationError}
+                        </p>
+                      ) : null}
+                    </div>
 
-                <button
-                  type="button"
-                  disabled={
-                    isHydrating ||
-                    isVerifyingTotp ||
-                    email.trim() === "" ||
-                    emailValidationError !== null ||
-                    totpCode.trim() === ""
-                  }
-                  onClick={handleTotpLogin}
-                  className={`${actionButtonClassName} border-[#00C896] bg-[#00C896] text-[#0D1117] hover:bg-[#00FF9C]`}
-                >
-                  {isVerifyingTotp ? "Signing in..." : "Sign In"}
-                </button>
-              </div>
-            </SyncSection>
+                    {signUpError ? (
+                      <div className="rounded-2xl border border-[#F85149]/45 bg-[#F85149]/10 px-[18px] py-[14px] text-sm font-medium text-[#FFB3AD]">
+                        {signUpError}
+                      </div>
+                    ) : null}
 
-            <SyncSection
-              title="Set Up TOTP"
-              description="If this email has not been enrolled yet, send a one-time enrollment link to your Gmail inbox."
-            >
-              <div className="flex flex-col gap-5">
-                <div>
-                  <label className="mb-3 block text-base font-medium text-[#A6ADC8]">
-                    Gmail Address
-                  </label>
-                  <input
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className={fieldClassName}
-                    type="email"
-                    placeholder="you@gmail.com"
-                  />
-                  {emailValidationError ? (
-                    <p className="mt-3 text-sm font-medium text-[#FFB3AD]">
-                      {emailValidationError}
-                    </p>
-                  ) : null}
-                </div>
+                    {enrollmentStatus ? (
+                      <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm text-[#8B949E] break-words">
+                        {enrollmentStatus}
+                      </div>
+                    ) : null}
 
-                {enrollmentStatus ? (
-                  <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm text-[#8B949E] break-words">
-                    {enrollmentStatus}
+                    <button
+                      type="button"
+                      disabled={
+                        isHydrating ||
+                        isRequestingEnrollment ||
+                        signUpEmail.trim() === "" ||
+                        signUpEmailValidationError !== null
+                      }
+                      onClick={() => void handleRequestEnrollment()}
+                      className={`${actionButtonClassName} border-[#30363D] bg-[#0D1117] text-[#E6EDF3] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]`}
+                    >
+                      {isRequestingEnrollment
+                        ? "Sending..."
+                        : "Email me a setup link"}
+                    </button>
                   </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  disabled={
-                    isHydrating ||
-                    isRequestingEnrollment ||
-                    email.trim() === "" ||
-                    emailValidationError !== null
-                  }
-                  onClick={handleRequestEnrollment}
-                  className={`${actionButtonClassName} border-[#30363D] bg-[#0D1117] text-[#E6EDF3] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]`}
-                >
-                  {isRequestingEnrollment
-                    ? "Sending..."
-                    : "Email me a setup link"}
-                </button>
+                )}
               </div>
             </SyncSection>
           </>

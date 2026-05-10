@@ -19,7 +19,6 @@
       ],
       "vars": {
         "ENVIRONMENT": "development",
-        "DEV_TOTP_ENROLLMENT_LINK_ECHO": "true",
         "TOTP_ENROLLMENT_TTL_HOURS": "24",
         "SESSION_TTL_DAYS": "30",
         "APP_NAME": "Learn Deutsch",

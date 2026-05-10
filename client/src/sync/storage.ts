@@ -2,6 +2,7 @@ import { AuthSession } from "./types";
 
 const SESSION_STORAGE_KEY = "learn-german-sync-session";
 const CLIENT_INSTALLATION_ID_KEY = "learn-german-client-installation-id";
+export const SYNC_SESSION_CHANGED_EVENT = "learn-german-sync-session-changed";
 
 function canUseWindow() {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -30,6 +31,7 @@ export function saveStoredSyncSession(session: AuthSession) {
   }
 
   window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event(SYNC_SESSION_CHANGED_EVENT));
 }
 
 export function clearStoredSyncSession() {
@@ -38,6 +40,7 @@ export function clearStoredSyncSession() {
   }
 
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.dispatchEvent(new Event(SYNC_SESSION_CHANGED_EVENT));
 }
 
 export function getOrCreateClientInstallationId() {

@@ -55,6 +55,27 @@ CREATE TABLE IF NOT EXISTS totp_enrollments (
   created_at TEXT NOT NULL
 );
 
+DELETE FROM totp_enrollments
+WHERE id IN (
+  SELECT id
+  FROM (
+    SELECT
+      id,
+      ROW_NUMBER() OVER (
+        PARTITION BY email
+        ORDER BY
+          CASE WHEN consumed_at IS NULL THEN 0 ELSE 1 END,
+          created_at DESC,
+          id DESC
+      ) AS row_num
+    FROM totp_enrollments
+  ) ranked
+  WHERE ranked.row_num > 1
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_totp_enrollments_email
+ON totp_enrollments(email);
+
 CREATE TABLE IF NOT EXISTS totp_credentials (
   user_id TEXT PRIMARY KEY,
   secret TEXT NOT NULL,

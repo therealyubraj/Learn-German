@@ -17,7 +17,6 @@ export type D1Database = {
 export type Env = {
   DB: D1Database;
   ENVIRONMENT?: string;
-  DEV_TOTP_ENROLLMENT_LINK_ECHO?: string;
   TOTP_ENROLLMENT_TTL_HOURS?: string;
   SESSION_TTL_DAYS?: string;
   APP_BASE_URL?: string;

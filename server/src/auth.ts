@@ -221,6 +221,22 @@ export async function getTotpCredentialByEmail(email: string, env: Env) {
     .first<TotpCredentialRow>();
 }
 
+export async function getEnrollmentByEmail(
+  email: string,
+  env: Env,
+): Promise<TotpEnrollmentRow | null> {
+  return env.DB.prepare(
+    `
+      SELECT *
+      FROM totp_enrollments
+      WHERE email = ?
+      LIMIT 1
+    `,
+  )
+    .bind(email)
+    .first<TotpEnrollmentRow>();
+}
+
 export async function getEnrollmentByToken(
   rawToken: string,
   env: Env,

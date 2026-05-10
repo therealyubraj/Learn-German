@@ -35,6 +35,7 @@ import {
   getOrCreateClientInstallationId,
   getStoredSyncSession,
   saveStoredSyncSession,
+  SYNC_SESSION_CHANGED_EVENT,
 } from "./storage";
 import {
   AuthSession,
@@ -355,6 +356,36 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleStoredSessionChange() {
+      const storedSession = getStoredSyncSession();
+
+      if (!storedSession) {
+        updateSession(null);
+        setOtherDevices([]);
+        setHasPendingRemoteUpload(false);
+        setLatestRevision(0);
+        setLastSyncedAt(null);
+        setRequiresSyncBeforeUse(false);
+        updateMutationRuntime(null, false);
+        return;
+      }
+
+      updateSession(storedSession);
+      setError(null);
+      updateMutationRuntime(storedSession, false);
+    }
+
+    window.addEventListener(SYNC_SESSION_CHANGED_EVENT, handleStoredSessionChange);
+
+    return () => {
+      window.removeEventListener(
+        SYNC_SESSION_CHANGED_EVENT,
+        handleStoredSessionChange,
+      );
     };
   }, []);
 

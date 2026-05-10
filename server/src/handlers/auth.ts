@@ -1,4 +1,5 @@
 import {
+  getEnrollmentByEmail,
   getEnrollmentByToken,
   getSessionContext,
   getTotpCredentialByEmail,
@@ -45,25 +46,8 @@ function getTotpIssuer(env: Env) {
   return env.TOTP_ISSUER ?? env.APP_NAME ?? "Learn Deutsch";
 }
 
-function isProductionEnvironment(env: Env) {
-  return env.ENVIRONMENT === "production";
-}
-
-function isLocalHostValue(value: string | null | undefined) {
-  if (!value) {
-    return false;
-  }
-
-  return value.includes("localhost") || value.includes("127.0.0.1");
-}
-
-function canEchoDevEnrollmentLink(env: Env, request: Request) {
-  return (
-    !isProductionEnvironment(env) &&
-    env.DEV_TOTP_ENROLLMENT_LINK_ECHO === "true" &&
-    (isLocalHostValue(env.APP_BASE_URL) ||
-      isLocalHostValue(new URL(request.url).origin))
-  );
+function isDevelopmentEnvironment(env: Env) {
+  return env.ENVIRONMENT === "development";
 }
 
 function buildEnrollmentLink(env: Env, request: Request, rawToken: string) {
@@ -88,6 +72,26 @@ export async function startTotpEnrollmentHandler(request: Request, env: Env) {
     return badRequest("Only @gmail.com addresses are allowed.");
   }
 
+  const existingCredential = await getTotpCredentialByEmail(email, env);
+  if (existingCredential) {
+    return badRequest("A TOTP account already exists for this email.");
+  }
+
+  const existingEnrollment = await getEnrollmentByEmail(email, env);
+  const hasActiveEnrollment =
+    !!existingEnrollment &&
+    isEnrollmentUsable(
+      existingEnrollment.expires_at,
+      existingEnrollment.consumed_at,
+    );
+  if (
+    hasActiveEnrollment
+  ) {
+    if (!isDevelopmentEnvironment(env)) {
+      return badRequest("A TOTP enrollment is already active for this email.");
+    }
+  }
+
   const rawToken = crypto.randomUUID();
   const tokenHash = await sha256(rawToken);
   const secret = generateTotpSecret();
@@ -108,6 +112,12 @@ export async function startTotpEnrollmentHandler(request: Request, env: Env) {
         consumed_at,
         created_at
       ) VALUES (?, ?, ?, ?, ?, NULL, ?)
+      ON CONFLICT(email) DO UPDATE SET
+        secret = excluded.secret,
+        token_hash = excluded.token_hash,
+        expires_at = excluded.expires_at,
+        consumed_at = NULL,
+        created_at = excluded.created_at
     `,
   )
     .bind(
@@ -117,34 +127,31 @@ export async function startTotpEnrollmentHandler(request: Request, env: Env) {
       tokenHash,
       expiresAt,
       createdAt,
-    )
+  )
     .run();
 
   const enrollmentLink = buildEnrollmentLink(env, request, rawToken);
-  let emailWasSent = false;
-
-  try {
-    await sendTotpEnrollmentEmail({
-      env,
-      recipient: email,
-      enrollmentLink,
+  if (isDevelopmentEnvironment(env)) {
+    return json({
+      ok: true,
       expiresAt,
+      emailSent: false,
+      devEnrollmentLink: enrollmentLink,
+      wouldFailInProduction: hasActiveEnrollment,
     });
-    emailWasSent = true;
-  } catch (emailError) {
-    console.error("Failed to send TOTP enrollment email.", emailError);
-    if (!canEchoDevEnrollmentLink(env, request)) {
-      throw emailError;
-    }
   }
+
+  await sendTotpEnrollmentEmail({
+    env,
+    recipient: email,
+    enrollmentLink,
+    expiresAt,
+  });
 
   return json({
     ok: true,
     expiresAt,
-    emailSent: emailWasSent,
-    ...(canEchoDevEnrollmentLink(env, request)
-      ? { devEnrollmentLink: enrollmentLink }
-      : {}),
+    emailSent: true,
   });
 }
 
@@ -157,6 +164,11 @@ export async function getTotpEnrollmentHandler(request: Request, env: Env) {
   const enrollment = await getEnrollmentByToken(token, env);
   if (!enrollment || !isEnrollmentUsable(enrollment.expires_at, enrollment.consumed_at)) {
     return unauthorized("This TOTP enrollment link is invalid or has expired.");
+  }
+
+  const existingCredential = await getTotpCredentialByEmail(enrollment.email, env);
+  if (existingCredential) {
+    return unauthorized("A TOTP account already exists for this email.");
   }
 
   const issuer = getTotpIssuer(env);
@@ -197,6 +209,11 @@ export async function completeTotpEnrollmentHandler(request: Request, env: Env) 
   const enrollment = await getEnrollmentByToken(token, env);
   if (!enrollment || !isEnrollmentUsable(enrollment.expires_at, enrollment.consumed_at)) {
     return unauthorized("This TOTP enrollment link is invalid or has expired.");
+  }
+
+  const existingCredential = await getTotpCredentialByEmail(enrollment.email, env);
+  if (existingCredential) {
+    return unauthorized("A TOTP account already exists for this email.");
   }
 
   const codeIsValid = await verifyTotpCode(enrollment.secret, code);

@@ -1,13 +1,14 @@
 {
   "name": "Learn-German",
   "scripts": {
-    "build": "bash ./scripts/worker.sh build",
-    "dist": "bash ./scripts/worker.sh dist",
-    "dev": "bash ./scripts/worker.sh dev",
-    "d1:apply:development": "bash ./scripts/worker.sh d1:apply:development",
-    "d1:apply:PRODUCTION": "bash ./scripts/worker.sh d1:apply:PRODUCTION",
-    "deploy:worker:PRODUCTION": "bash ./scripts/worker.sh deploy:worker:PRODUCTION",
-    "deploy": "bash ./scripts/worker.sh deploy"
+    "build": "pnpm --dir ./client build",
+    "dist": "pnpm --dir ./client dist",
+    "dev": "pnpm -r --parallel --filter ./server --filter ./client dev",
+    "dev:client": "pnpm --dir ./client dev",
+    "dev:server": "pnpm --dir ./server dev",
+    "d1:apply:development": "pnpm --dir ./server d1:apply:development",
+    "d1:apply:PRODUCTION": "bash ./scripts/d1-apply-production.sh",
+    "deploy:worker:PRODUCTION": "bash ./scripts/deploy-worker-production.sh"
   },
   "packageManager": "pnpm@10.13.1+sha1.aa8c167c4509c97519542ef77a09e4b8ab59fb6a"
 }

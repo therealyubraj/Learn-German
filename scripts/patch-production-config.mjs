@@ -10,7 +10,6 @@ const requiredVars = [
   "D1_LEARN_GERMAN_UUID",
   "DEPLOY_DOMAIN",
   "ENVIRONMENT",
-  "DEV_TOTP_ENROLLMENT_LINK_ECHO",
   "TOTP_ENROLLMENT_TTL_HOURS",
   "SESSION_TTL_DAYS",
   "APP_NAME",
@@ -47,7 +46,6 @@ config.env.production.routes = [normalizeRoute(process.env.DEPLOY_DOMAIN)];
 
 config.env.production.vars = {
   ENVIRONMENT: process.env.ENVIRONMENT,
-  DEV_TOTP_ENROLLMENT_LINK_ECHO: process.env.DEV_TOTP_ENROLLMENT_LINK_ECHO,
   TOTP_ENROLLMENT_TTL_HOURS: process.env.TOTP_ENROLLMENT_TTL_HOURS,
   SESSION_TTL_DAYS: process.env.SESSION_TTL_DAYS,
   APP_NAME: process.env.APP_NAME,
