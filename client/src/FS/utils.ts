@@ -4,6 +4,17 @@ import { getBuiltInWordLists } from "../builtInWordLists";
 import { getWordListChecksum } from "../lib";
 import { quizEngine } from "../quiz/engine";
 import {
+  APP_SNAPSHOT_VERSION,
+  type SyncSnapshot,
+} from "../sync/types";
+import {
+  DEFAULT_SYNC_TIMESTAMP,
+  getWordListUpdatedAt,
+  mergeQuizStats,
+} from "../sync/merge";
+import { markLocalDataDirty } from "../sync/local";
+import { assertSyncMutationAllowed } from "../sync/runtime";
+import {
   AnyQuizStatsStore,
   CURRENT_QUIZ_STATS_VERSION,
   getQuizStatsMigrationSteps,
@@ -25,6 +36,8 @@ import { getQuizItemKey, sortWordListInPlace } from "../utils";
 import { storage } from "./Storage";
 
 const WORDS_DIR = "wordlists";
+const SYNC_DIR = "sync";
+const LOCAL_SYNC_METADATA_FILE = `${SYNC_DIR}/local-sync-metadata.json`;
 
 export function getWordListDirectory(newFileName?: string) {
   if (!newFileName) {
@@ -38,6 +51,68 @@ function getWordListPath(name: string) {
   return `${getWordListDirectory()}/${name}.json`;
 }
 
+type LocalSyncMetadata = {
+  settingsUpdatedAt: string;
+};
+
+type SaveMutationOptions = {
+  markDirty?: boolean;
+};
+
+type SaveWordListOptions = SaveMutationOptions & {
+  updatedAt?: string;
+};
+
+type SaveSettingsOptions = SaveMutationOptions & {
+  updatedAt?: string;
+};
+
+function getCurrentTimestamp() {
+  return new Date().toISOString();
+}
+
+async function readLocalSyncMetadata(): Promise<LocalSyncMetadata> {
+  try {
+    const raw = await storage.readFile(LOCAL_SYNC_METADATA_FILE);
+    const parsed = JSON.parse(raw) as Partial<LocalSyncMetadata>;
+    return {
+      settingsUpdatedAt: parsed.settingsUpdatedAt ?? DEFAULT_SYNC_TIMESTAMP,
+    };
+  } catch {
+    return {
+      settingsUpdatedAt: DEFAULT_SYNC_TIMESTAMP,
+    };
+  }
+}
+
+async function writeLocalSyncMetadata(metadata: LocalSyncMetadata) {
+  const success = await storage.writeFile(
+    LOCAL_SYNC_METADATA_FILE,
+    JSON.stringify(metadata, null, 2),
+  );
+
+  if (!success) {
+    throw new Error("Could not save local sync metadata.");
+  }
+}
+
+function normalizeStoredWordList(
+  storedWordList: StoredWordList,
+  fallbackUpdatedAt = DEFAULT_SYNC_TIMESTAMP,
+): StoredWordList {
+  return {
+    ...storedWordList,
+    metadata: {
+      ...storedWordList.metadata,
+      updatedAt: storedWordList.metadata.updatedAt ?? fallbackUpdatedAt,
+    },
+  };
+}
+
+async function parseStoredWordListFile(path: string): Promise<StoredWordList> {
+  return normalizeStoredWordList(JSON.parse(await storage.readFile(path)));
+}
+
 export async function getAllWordListMetadata() {
   const wordListDirectory = getWordListDirectory();
 
@@ -47,33 +122,37 @@ export async function getAllWordListMetadata() {
 
   const allMetadata: WordListMetaData[] = [];
   for (const file of allFiles) {
-    const fileContent = await storage.readFile(
-      wordListDirectory + "/" + file.name
+    const parsedContent = await parseStoredWordListFile(
+      wordListDirectory + "/" + file.name,
     );
-
-    const parsedContent: StoredWordList = JSON.parse(fileContent);
-
     allMetadata.push(parsedContent.metadata);
   }
 
   return allMetadata;
 }
 
-export async function getAllWordListSummaries(): Promise<WordListSummary[]> {
+export async function getAllStoredWordLists(): Promise<StoredWordList[]> {
   const wordListDirectory = getWordListDirectory();
 
   const allFiles = (await storage.ls(wordListDirectory)).filter(
-    (x) => x.type === "file"
+    (x) => x.type === "file",
   );
 
-  const allSummaries: WordListSummary[] = [];
+  const allLists: StoredWordList[] = [];
   for (const file of allFiles) {
-    const fileContent = await storage.readFile(
-      wordListDirectory + "/" + file.name
+    allLists.push(
+      await parseStoredWordListFile(wordListDirectory + "/" + file.name),
     );
+  }
 
-    const parsedContent: StoredWordList = JSON.parse(fileContent);
+  return allLists.sort((left, right) =>
+    left.metadata.name.localeCompare(right.metadata.name),
+  );
+}
 
+export async function getAllWordListSummaries(): Promise<WordListSummary[]> {
+  const allSummaries: WordListSummary[] = [];
+  for (const parsedContent of await getAllStoredWordLists()) {
     allSummaries.push({
       ...parsedContent.metadata,
       wordCount: parsedContent.list.length,
@@ -99,11 +178,9 @@ export async function getCombinedWordLists(
   };
 
   for (const file of allFiles) {
-    const fileContent = await storage.readFile(
-      wordListDirectory + "/" + file.name
+    const parsedContent = await parseStoredWordListFile(
+      wordListDirectory + "/" + file.name,
     );
-
-    const parsedContent: StoredWordList = JSON.parse(fileContent);
     quiz.words = quiz.words.concat(parsedContent.list);
   }
 
@@ -113,32 +190,63 @@ export async function getCombinedWordLists(
   return quiz;
 }
 
-export async function saveNewWordList(newList: StoredWordList) {
+export async function saveNewWordList(
+  newList: StoredWordList,
+  options: SaveWordListOptions = {},
+) {
+  if (options.markDirty ?? true) {
+    assertSyncMutationAllowed();
+  }
+
+  const normalizedWordList = normalizeStoredWordList(newList, options.updatedAt);
+  const nextWordList = {
+    ...normalizedWordList,
+    metadata: {
+      ...normalizedWordList.metadata,
+      updatedAt: options.updatedAt ?? normalizedWordList.metadata.updatedAt ?? getCurrentTimestamp(),
+    },
+  };
   const success = await storage.writeFile(
-    getWordListPath(newList.metadata.name),
-    JSON.stringify(newList, null, 2)
+    getWordListPath(nextWordList.metadata.name),
+    JSON.stringify(nextWordList, null, 2)
   );
 
   if (!success) {
     throw new Error("Could not save new list.");
   }
+
+  if (options.markDirty ?? true) {
+    markLocalDataDirty("wordlists");
+  }
 }
 
 export async function getWordListByName(name: string): Promise<StoredWordList> {
-  return JSON.parse(await storage.readFile(getWordListPath(name)));
+  return parseStoredWordListFile(getWordListPath(name));
 }
 
-export async function deleteWordListByName(name: string): Promise<void> {
+export async function deleteWordListByName(
+  name: string,
+  options: SaveMutationOptions = {},
+): Promise<void> {
+  if (options.markDirty ?? true) {
+    assertSyncMutationAllowed();
+  }
+
   const success = await storage.deleteFile(getWordListPath(name));
 
   if (!success) {
     throw new Error("Could not delete word set.");
   }
+
+  if (options.markDirty ?? true) {
+    markLocalDataDirty("wordlists");
+  }
 }
 
 export async function saveEditedWordList(
   name: string,
-  list: WordList
+  list: WordList,
+  options: SaveWordListOptions = {},
 ): Promise<StoredWordList> {
   const sortedList = [...list];
   sortWordListInPlace(sortedList);
@@ -150,10 +258,11 @@ export async function saveEditedWordList(
     metadata: {
       name,
       checksum,
+      updatedAt: options.updatedAt ?? getCurrentTimestamp(),
     },
   };
 
-  await saveNewWordList(nextList);
+  await saveNewWordList(nextList, options);
   return nextList;
 }
 
@@ -169,7 +278,7 @@ export async function initializeBuiltInWordLists() {
 
   const builtInWordLists = await getBuiltInWordLists();
   for (const wordList of builtInWordLists) {
-    await saveNewWordList(wordList);
+    await saveNewWordList(wordList, { markDirty: false });
   }
 }
 
@@ -202,7 +311,14 @@ export async function readSavedSettings(): Promise<AppSettings> {
   }
 }
 
-export async function saveSettings(settings: AppSettings): Promise<void> {
+export async function saveSettings(
+  settings: AppSettings,
+  options: SaveSettingsOptions = {},
+): Promise<void> {
+  if (options.markDirty ?? true) {
+    assertSyncMutationAllowed();
+  }
+
   const success = await storage.writeFile(
     SETTINGS_FILE_NAME,
     JSON.stringify(settings, null, 2)
@@ -210,6 +326,14 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 
   if (!success) {
     throw new Error("Could not save settings.");
+  }
+
+  await writeLocalSyncMetadata({
+    settingsUpdatedAt: options.updatedAt ?? getCurrentTimestamp(),
+  });
+
+  if (options.markDirty ?? true) {
+    markLocalDataDirty("settings");
   }
 }
 
@@ -298,6 +422,30 @@ async function persistQuizStatsStore(store: AnyQuizStatsStore) {
   }
 }
 
+export async function readVersionedQuizStats(): Promise<VersionedQuizStats> {
+  const globalStatsExists = await storage.exists(GLOBAL_QUIZ_ITEM_STATS_FILE);
+  const detectedStore = await readDetectedQuizStatsStore();
+
+  const migratedStore = detectedStore
+    ? detectedStore.version === CURRENT_QUIZ_STATS_VERSION
+      ? migrateQuizStatsStore(detectedStore)
+      : await migrateDetectedQuizStatsStore(detectedStore)
+    : {
+        version: CURRENT_QUIZ_STATS_VERSION,
+        stats: {},
+      };
+
+  if (
+    !globalStatsExists ||
+    !detectedStore ||
+    detectedStore.version !== CURRENT_QUIZ_STATS_VERSION
+  ) {
+    await persistQuizStatsStore(migratedStore);
+  }
+
+  return migratedStore;
+}
+
 async function migrateDetectedQuizStatsStore(
   detectedStore: AnyQuizStatsStore
 ): Promise<VersionedQuizStats> {
@@ -332,15 +480,7 @@ function ensureWordStatsExist(stats: QuizStat, allWords: QuizItem[]) {
 export async function getStatsForWords(allWords: QuizItem[]): Promise<QuizStat> {
   const globalStatsExists = await storage.exists(GLOBAL_QUIZ_ITEM_STATS_FILE);
   const detectedStore = await readDetectedQuizStatsStore();
-
-  const migratedStore = detectedStore
-    ? detectedStore.version === CURRENT_QUIZ_STATS_VERSION
-      ? migrateQuizStatsStore(detectedStore)
-      : await migrateDetectedQuizStatsStore(detectedStore)
-    : {
-        version: CURRENT_QUIZ_STATS_VERSION,
-        stats: {},
-      };
+  const migratedStore = await readVersionedQuizStats();
   const nextStats = migratedStore.stats;
 
   const shouldRewriteVersionedStore =
@@ -361,14 +501,90 @@ export async function getStatsForWords(allWords: QuizItem[]): Promise<QuizStat> 
   return nextStats;
 }
 
-export async function writeStats(stats: QuizStat) {
+export async function writeStats(
+  stats: QuizStat,
+  options: SaveMutationOptions = {},
+) {
+  if (options.markDirty ?? true) {
+    assertSyncMutationAllowed();
+  }
+
   const nextStore: VersionedQuizStats = {
     version: CURRENT_QUIZ_STATS_VERSION,
     stats,
   };
 
-  return await storage.writeFile(
+  const success = await storage.writeFile(
     GLOBAL_QUIZ_ITEM_STATS_FILE,
     JSON.stringify(nextStore)
   );
+
+  if (success && (options.markDirty ?? true)) {
+    markLocalDataDirty("stats");
+  }
+
+  return success;
+}
+
+export async function getLocalAppSnapshot(): Promise<SyncSnapshot> {
+  const [wordLists, settings, settingsMeta, stats] = await Promise.all([
+    getAllStoredWordLists(),
+    readSavedSettings(),
+    readLocalSyncMetadata(),
+    readVersionedQuizStats(),
+  ]);
+
+  const exportedAt = getCurrentTimestamp();
+
+  return {
+    version: APP_SNAPSHOT_VERSION,
+    exportedAt,
+    wordLists: wordLists.map((wordList) =>
+      normalizeStoredWordList(wordList, exportedAt),
+    ),
+    settings,
+    settingsUpdatedAt: settingsMeta.settingsUpdatedAt,
+    stats,
+  };
+}
+
+export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
+  const [localWordLists, localSettingsMeta, localStatsStore] = await Promise.all(
+    [getAllStoredWordLists(), readLocalSyncMetadata(), readVersionedQuizStats()],
+  );
+
+  const localWordListsByName = new Map(
+    localWordLists.map((wordList) => [wordList.metadata.name, wordList]),
+  );
+
+  for (const incomingWordList of snapshot.wordLists) {
+    const normalizedIncomingWordList = normalizeStoredWordList(
+      incomingWordList,
+      snapshot.exportedAt,
+    );
+    const currentWordList = localWordListsByName.get(
+      normalizedIncomingWordList.metadata.name,
+    );
+
+    if (
+      !currentWordList ||
+      getWordListUpdatedAt(normalizedIncomingWordList) >
+        getWordListUpdatedAt(currentWordList)
+    ) {
+      await saveNewWordList(normalizedIncomingWordList, {
+        markDirty: false,
+        updatedAt: normalizedIncomingWordList.metadata.updatedAt,
+      });
+    }
+  }
+
+  if (snapshot.settingsUpdatedAt > localSettingsMeta.settingsUpdatedAt) {
+    await saveSettings(snapshot.settings, {
+      markDirty: false,
+      updatedAt: snapshot.settingsUpdatedAt,
+    });
+  }
+
+  const mergedStats = mergeQuizStats(localStatsStore.stats, snapshot.stats.stats);
+  await writeStats(mergedStats, { markDirty: false });
 }

@@ -14,3 +14,17 @@
 node_modules
 
 .DS_Store
+
+# Local env and Cloudflare worker state
+.env*
+.dev.vars*
+!.env*.example
+!.dev.vars*.example
+.wrangler/
+
+# Build output
+dist/
+client/dist/
+server/dist/
+
+**/*.vars.*

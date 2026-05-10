@@ -1,0 +1,42 @@
+{
+  "$schema": "./server/node_modules/wrangler/config-schema.json",
+  "name": "learn-german",
+  "main": "server/src/index.ts",
+  "compatibility_date": "2026-05-08",
+  "assets": {
+    "directory": "./client/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "env": {
+    "development": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "learn-german-sync-development",
+          "database_id": "local-development-placeholder-id"
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "development",
+        "DEV_TOTP_ENROLLMENT_LINK_ECHO": "true",
+        "TOTP_ENROLLMENT_TTL_HOURS": "24",
+        "SESSION_TTL_DAYS": "30",
+        "APP_NAME": "Learn Deutsch",
+        "TOTP_ISSUER": "Learn Deutsch",
+        "APP_BASE_URL": "http://127.0.0.1:8787",
+        "ALLOWED_ORIGIN": "http://127.0.0.1:8787",
+        "EMAIL_SENDER": "dev@example.invalid"
+      }
+    },
+    "production": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "learn-german-sync-prod",
+          "database_id": "replace-with-production-d1-id"
+        }
+      ]
+    }
+  }
+}

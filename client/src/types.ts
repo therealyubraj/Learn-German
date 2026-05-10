@@ -12,6 +12,7 @@ export type WordList = Array<QuizItem>;
 export type WordListMetaData = {
   name: string;
   checksum: string;
+  updatedAt?: string;
 };
 
 export type WordListSummary = WordListMetaData & {

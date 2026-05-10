@@ -20,6 +20,7 @@ const germanBasics: WordList = [
 export async function getBuiltInWordLists(): Promise<Array<StoredWordList>> {
   const sortedList = [...germanBasics];
   sortWordListInPlace(sortedList);
+  const updatedAt = new Date().toISOString();
 
   return [
     {
@@ -27,6 +28,7 @@ export async function getBuiltInWordLists(): Promise<Array<StoredWordList>> {
       metadata: {
         name: "German Basics",
         checksum: await getWordListChecksum(sortedList),
+        updatedAt,
       },
     },
   ];

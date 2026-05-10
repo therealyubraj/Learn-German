@@ -128,6 +128,7 @@ export function UserImport() {
         metadata: {
           checksum: newChecksum,
           name: listNameInput,
+          updatedAt: new Date().toISOString(),
         },
       });
 

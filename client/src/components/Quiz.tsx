@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { getCombinedWordLists, writeStats } from "../FS/utils";
 import { QuizItem, RunningQuiz } from "../types";
 import { quizEngine } from "../quiz/engine";
+import { assertSyncMutationAllowed } from "../sync/runtime";
 
 export function Quiz() {
   const location = useLocation();
@@ -13,6 +14,14 @@ export function Quiz() {
   });
 
   function onNext(guessedCorrectly: boolean) {
+    try {
+      assertSyncMutationAllowed();
+    } catch (error) {
+      console.error(error);
+      window.alert((error as Error).message);
+      return;
+    }
+
     // update the stats of this word in the file
     quizEngine.updateStats(currentItem, guessedCorrectly);
 
@@ -24,8 +33,6 @@ export function Quiz() {
       .then((v) => {
         if (!v) {
           console.error("Failed to write stats?");
-        } else {
-          console.log("Successfully wrote stats.");
         }
       })
       .catch((e) => console.error(e));
