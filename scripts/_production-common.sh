@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SERVER_DIR="${ROOT_DIR}/server"
+CLIENT_DIR="${ROOT_DIR}/client"
 WRANGLER_FILE="${ROOT_DIR}/wrangler.jsonc"
 ENV_FILE_PATH="${ENV_FILE:-}"
 BACKUP_FILE=""

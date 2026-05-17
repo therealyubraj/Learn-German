@@ -9,6 +9,8 @@ source "${SCRIPT_DIR}/_production-common.sh"
 prepare_production_wrangler
 trap restore_wrangler EXIT INT TERM
 
+pnpm --dir "${CLIENT_DIR}" dist
+
 pnpm --dir "${SERVER_DIR}" exec wrangler deploy \
   --config ../wrangler.jsonc \
   -e production
