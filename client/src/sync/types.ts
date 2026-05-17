@@ -1,11 +1,17 @@
 import { AppSettings, StoredWordList, VersionedQuizStats } from "../types";
 
-export const APP_SNAPSHOT_VERSION = 1;
+export const APP_SNAPSHOT_VERSION = 2;
+
+export type DeletedWordListTombstone = {
+  name: string;
+  deletedAt: string;
+};
 
 export type SyncSnapshot = {
   version: typeof APP_SNAPSHOT_VERSION;
   exportedAt: string;
   wordLists: StoredWordList[];
+  deletedWordLists: DeletedWordListTombstone[];
   settings: AppSettings;
   settingsUpdatedAt: string;
   stats: VersionedQuizStats;

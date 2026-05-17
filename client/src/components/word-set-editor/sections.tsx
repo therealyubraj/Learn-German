@@ -18,7 +18,7 @@ export function EditorHeader() {
         </div>
 
         <Link
-          to="/quiz-selection"
+          to="/"
           className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[14px] text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
         >
           Back to Quiz Setup
@@ -29,22 +29,53 @@ export function EditorHeader() {
 }
 
 export function ActionsSection({
+  wordSetName,
   isMutating,
   isDeletingSet,
   isLoading,
   onAddItem,
+  onRenameSet,
   onDeleteSet,
 }: {
+  wordSetName: string | null;
   isMutating: boolean;
   isDeletingSet: boolean;
   isLoading: boolean;
   onAddItem: () => void;
+  onRenameSet: () => void;
   onDeleteSet: () => void;
 }) {
   return (
     <div className="rounded-3xl border border-[#30363D] bg-[#0D1117] p-6 sm:p-7">
       <div className="flex h-full flex-col gap-4">
         <h2 className="text-base font-medium text-[#A6ADC8]">Manage this set</h2>
+
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#30363D] bg-[#161B22] px-4 py-3">
+          <p className="min-w-0 truncate text-sm font-medium text-[#E6EDF3]">
+            {wordSetName ?? "Word set"}
+          </p>
+          <button
+            type="button"
+            disabled={isMutating || isDeletingSet || isLoading}
+            onClick={onRenameSet}
+            aria-label="Rename word set"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-[#30363D] bg-[#0D1117] text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C] disabled:cursor-not-allowed disabled:border-[#30363D] disabled:bg-[#1C232D] disabled:text-[#8B949E]"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </button>
+        </div>
 
         <div className="rounded-2xl border border-[#30363D] bg-[#161B22] p-3">
           <div className="grid gap-3 sm:grid-cols-2">

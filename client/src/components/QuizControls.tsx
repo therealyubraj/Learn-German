@@ -185,6 +185,7 @@ export function QuizControls({
 
             <button
               className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={handleCheckAnswer}
               disabled={isSpeaking}
               data-vim-key="Enter"

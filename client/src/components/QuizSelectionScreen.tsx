@@ -121,10 +121,7 @@ function MultiSelectDropdown({
     if (!isOpen) {
       setSearchQuery("");
       setActiveIndex(-1);
-      return;
     }
-
-    searchInputRef.current?.focus();
   }, [isOpen]);
 
   useEffect(() => {
@@ -263,7 +260,7 @@ function MultiSelectDropdown({
                     return (
                       <div
                         key={option.name}
-                        className={`flex items-center gap-3 rounded-xl px-[18px] py-[14px] transition-colors ${
+                        className={`flex items-center gap-2 rounded-xl px-3 py-3 sm:gap-3 sm:px-[18px] sm:py-[14px] transition-colors ${
                           index === activeIndex
                             ? isSelected
                               ? "bg-[#00C896]/18"
@@ -274,7 +271,7 @@ function MultiSelectDropdown({
                         <button
                           type="button"
                           onClick={() => onToggle(option.name)}
-                          className="flex min-w-0 flex-1 items-center justify-between gap-4 border border-transparent text-left hover:border-transparent focus:border-transparent focus:outline-none focus:shadow-none focus-visible:border-transparent focus-visible:outline-none focus-visible:shadow-none"
+                          className="flex min-w-0 flex-1 items-center gap-3 border border-transparent text-left hover:border-transparent focus:border-transparent focus:outline-none focus:shadow-none focus-visible:border-transparent focus-visible:outline-none focus-visible:shadow-none"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <motion.span
@@ -300,31 +297,33 @@ function MultiSelectDropdown({
                             >
                               ✓
                             </motion.span>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium text-[#E6EDF3]">
                                 {option.name}
                               </p>
-                              <p className="text-xs text-[#8B949E]">
-                                {option.wordCount} words
-                              </p>
                             </div>
                           </div>
-                          {isSelected ? (
-                            <span className="inline-flex min-w-[5.5rem] items-center justify-center gap-1 rounded-full border border-[#00C896]/35 bg-[#00C896]/10 px-2.5 py-1 text-xs font-medium text-[#E6EDF3]">
-                              <span aria-hidden="true">✓</span>
-                              <span>Selected</span>
-                            </span>
-                          ) : (
-                            <span className="min-w-[5.5rem]" aria-hidden="true" />
-                          )}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => onEdit(option.name)}
-                          className="inline-flex min-h-10 min-w-[4.5rem] items-center justify-center rounded-xl border border-[#30363D] bg-[#0D1117] px-4 py-2 text-xs font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+                          aria-label={`Edit ${option.name}`}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#30363D] bg-[#0D1117] text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
                         >
-                          Edit
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
                         </button>
                       </div>
                     );
@@ -429,7 +428,7 @@ export function QuizSelectionScreen() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] w-full items-center justify-center px-6 py-10 sm:px-8">
+    <div className="flex min-h-[calc(100vh-5rem)] w-full items-start justify-center px-6 pb-16 pt-28 sm:px-8 sm:pt-32">
       <div className="flex w-full max-w-[42rem] flex-col gap-8">
         <div className="text-center">
           <h1

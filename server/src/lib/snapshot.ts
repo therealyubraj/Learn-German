@@ -43,6 +43,12 @@ function mergeLegacyChecksumStats(
   return merged;
 }
 
+function getDeletedWordListUpdatedAt(
+  wordList: SyncSnapshot["deletedWordLists"][number],
+) {
+  return wordList.deletedAt ?? "1970-01-01T00:00:00.000Z";
+}
+
 export function normalizeSnapshotStats(input: unknown): SyncSnapshot["stats"] {
   if (!input || typeof input !== "object") {
     return {
@@ -106,9 +112,10 @@ export function normalizeSnapshotStats(input: unknown): SyncSnapshot["stats"] {
 export function normalizeSyncSnapshot(input: unknown): SyncSnapshot {
   const now = nowIso();
   const fallbackSnapshot = {
-    version: 1,
+    version: 2,
     exportedAt: now,
     wordLists: [],
+    deletedWordLists: [],
     settings: {},
     settingsUpdatedAt: "1970-01-01T00:00:00.000Z",
     stats: {
@@ -124,6 +131,7 @@ export function normalizeSyncSnapshot(input: unknown): SyncSnapshot {
   const snapshot = input as Partial<SyncSnapshot> & {
     stats?: unknown;
     wordLists?: unknown;
+    deletedWordLists?: unknown;
     settingsUpdatedAt?: unknown;
   };
 
@@ -148,6 +156,21 @@ export function normalizeSyncSnapshot(input: unknown): SyncSnapshot {
         })
         .filter(Boolean) as SyncSnapshot["wordLists"]
     : [];
+  const deletedWordLists = Array.isArray(snapshot.deletedWordLists)
+    ? snapshot.deletedWordLists
+        .map((wordList) => {
+          if (!wordList || typeof wordList !== "object") {
+            return null;
+          }
+
+          const nextWordList = wordList as SyncSnapshot["deletedWordLists"][number];
+          return {
+            name: nextWordList.name ?? "Unnamed list",
+            deletedAt: nextWordList.deletedAt ?? exportedAt,
+          };
+        })
+        .filter(Boolean) as SyncSnapshot["deletedWordLists"]
+    : [];
 
   return {
     version:
@@ -156,6 +179,7 @@ export function normalizeSyncSnapshot(input: unknown): SyncSnapshot {
         : fallbackSnapshot.version,
     exportedAt,
     wordLists,
+    deletedWordLists,
     settings: snapshot.settings ?? fallbackSnapshot.settings,
     settingsUpdatedAt:
       typeof snapshot.settingsUpdatedAt === "string"
@@ -167,6 +191,60 @@ export function normalizeSyncSnapshot(input: unknown): SyncSnapshot {
 
 function getWordListUpdatedAt(wordList: SyncSnapshot["wordLists"][number]) {
   return wordList.metadata.updatedAt ?? "1970-01-01T00:00:00.000Z";
+}
+
+function mergeDeletedWordLists(
+  current: SyncSnapshot["deletedWordLists"],
+  incoming: SyncSnapshot["deletedWordLists"],
+) {
+  const merged = new Map<string, SyncSnapshot["deletedWordLists"][number]>();
+
+  for (const wordList of current) {
+    merged.set(wordList.name, wordList);
+  }
+
+  for (const wordList of incoming) {
+    const existing = merged.get(wordList.name);
+    if (
+      !existing ||
+      getDeletedWordListUpdatedAt(wordList) >=
+        getDeletedWordListUpdatedAt(existing)
+    ) {
+      merged.set(wordList.name, wordList);
+    }
+  }
+
+  return Array.from(merged.values()).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+}
+
+function resolveWordListSnapshotState(
+  wordLists: SyncSnapshot["wordLists"],
+  deletedWordLists: SyncSnapshot["deletedWordLists"],
+) {
+  const deletedWordListsByName = new Map(
+    deletedWordLists.map((wordList) => [wordList.name, wordList]),
+  );
+
+  const resolvedWordLists = wordLists.filter((wordList) => {
+    const deletedWordList = deletedWordListsByName.get(wordList.metadata.name);
+    return (
+      !deletedWordList ||
+      getWordListUpdatedAt(wordList) > getDeletedWordListUpdatedAt(deletedWordList)
+    );
+  });
+  const resolvedWordListNames = new Set(
+    resolvedWordLists.map((wordList) => wordList.metadata.name),
+  );
+  const resolvedDeletedWordLists = deletedWordLists.filter(
+    (wordList) => !resolvedWordListNames.has(wordList.name),
+  );
+
+  return {
+    wordLists: resolvedWordLists,
+    deletedWordLists: resolvedDeletedWordLists,
+  };
 }
 
 export function mergeQuizStats(
@@ -214,7 +292,13 @@ export function mergeSnapshots(
   incoming: SyncSnapshot,
 ): SyncSnapshot {
   if (!current) {
-    return incoming;
+    return {
+      ...incoming,
+      ...resolveWordListSnapshotState(
+        incoming.wordLists,
+        incoming.deletedWordLists,
+      ),
+    };
   }
 
   const wordListsByName = new Map<string, SyncSnapshot["wordLists"][number]>();
@@ -232,6 +316,12 @@ export function mergeSnapshots(
       wordListsByName.set(wordList.metadata.name, wordList);
     }
   }
+  const resolvedWordLists = resolveWordListSnapshotState(
+    Array.from(wordListsByName.values()).sort((left, right) =>
+      left.metadata.name.localeCompare(right.metadata.name),
+    ),
+    mergeDeletedWordLists(current.deletedWordLists, incoming.deletedWordLists),
+  );
 
   const settingsWins = incoming.settingsUpdatedAt >= current.settingsUpdatedAt;
 
@@ -241,9 +331,8 @@ export function mergeSnapshots(
       incoming.exportedAt >= current.exportedAt
         ? incoming.exportedAt
         : current.exportedAt,
-    wordLists: Array.from(wordListsByName.values()).sort((left, right) =>
-      left.metadata.name.localeCompare(right.metadata.name),
-    ),
+    wordLists: resolvedWordLists.wordLists,
+    deletedWordLists: resolvedWordLists.deletedWordLists,
     settings: settingsWins ? incoming.settings : current.settings,
     settingsUpdatedAt: settingsWins
       ? incoming.settingsUpdatedAt

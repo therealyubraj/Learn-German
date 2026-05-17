@@ -51,6 +51,10 @@ export type SyncSnapshot = {
       updatedAt?: string;
     };
   }>;
+  deletedWordLists: Array<{
+    name: string;
+    deletedAt: string;
+  }>;
   settings: unknown;
   settingsUpdatedAt: string;
   stats: {

@@ -22,6 +22,9 @@ export function EditItemModal({
     return null;
   }
 
+  const isEditingDraftValid =
+    editingDraft.LHS.trim() !== "" && editingDraft.RHS.trim() !== "";
+
   return (
     <ModalShell
       title="Edit Item"
@@ -38,7 +41,11 @@ export function EditItemModal({
               Update the fields below, then save directly from this modal.
             </p>
           </div>
-          <ItemForm values={editingDraft} onChange={onDraftChange} />
+          <ItemForm
+            values={editingDraft}
+            onChange={onDraftChange}
+            showValidation
+          />
         </div>
 
         <div className="flex flex-col gap-3 rounded-2xl border border-[#30363D] bg-[#0D1117] px-4 py-4 sm:flex-row sm:justify-between sm:px-5">
@@ -53,7 +60,7 @@ export function EditItemModal({
 
           <button
             type="button"
-            disabled={isMutating}
+            disabled={isMutating || !isEditingDraftValid}
             onClick={onSave}
             className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#00C896] bg-[#00C896] px-[24px] py-[14px] text-sm font-semibold text-[#0D1117] transition-colors hover:bg-[#00FF9C] disabled:cursor-not-allowed disabled:border-[#30363D] disabled:bg-[#1C232D] disabled:text-[#8B949E]"
           >

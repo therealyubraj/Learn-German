@@ -7,10 +7,15 @@ export const fieldClassName =
 export function ItemForm({
   values,
   onChange,
+  showValidation = false,
 }: {
   values: ItemFormValues;
   onChange: (field: keyof ItemFormValues, value: string) => void;
+  showValidation?: boolean;
 }) {
+  const lhsIsEmpty = values.LHS.trim() === "";
+  const rhsIsEmpty = values.RHS.trim() === "";
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="flex flex-col gap-2">
@@ -18,10 +23,19 @@ export function ItemForm({
         <input
           value={values.LHS}
           onChange={(event) => onChange("LHS", event.target.value)}
-          className={fieldClassName}
+          className={`${fieldClassName} ${
+            showValidation && lhsIsEmpty
+              ? "border-[#F85149] focus:border-[#F85149] focus:ring-[#F85149]/30"
+              : ""
+          }`}
           type="text"
           placeholder="Prompt shown in the quiz"
+          required
+          aria-invalid={showValidation && lhsIsEmpty}
         />
+        {showValidation && lhsIsEmpty ? (
+          <p className="text-xs font-medium text-[#FFB3AD]">LHS is required.</p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -29,10 +43,19 @@ export function ItemForm({
         <input
           value={values.RHS}
           onChange={(event) => onChange("RHS", event.target.value)}
-          className={fieldClassName}
+          className={`${fieldClassName} ${
+            showValidation && rhsIsEmpty
+              ? "border-[#F85149] focus:border-[#F85149] focus:ring-[#F85149]/30"
+              : ""
+          }`}
           type="text"
           placeholder="Expected answer"
+          required
+          aria-invalid={showValidation && rhsIsEmpty}
         />
+        {showValidation && rhsIsEmpty ? (
+          <p className="text-xs font-medium text-[#FFB3AD]">RHS is required.</p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2">

@@ -67,11 +67,11 @@ export function Settings() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] w-full justify-center px-6 pb-16 pt-44 sm:px-8 sm:pt-48">
+    <div className="flex min-h-[calc(100vh-5rem)] w-full justify-center px-6 pb-16 pt-28 sm:px-8 sm:pt-32">
       <div className="flex w-full max-w-[46rem] flex-col gap-8">
         <div className="text-center">
           <h1
-            className="mt-[30px] font-semibold tracking-[-0.04em] text-[#E6EDF3]"
+            className="font-semibold tracking-[-0.04em] text-[#E6EDF3]"
             style={{ fontSize: "4.25rem", lineHeight: "1.1" }}
           >
             Settings

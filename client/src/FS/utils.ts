@@ -5,12 +5,16 @@ import { getWordListChecksum } from "../lib";
 import { quizEngine } from "../quiz/engine";
 import {
   APP_SNAPSHOT_VERSION,
+  type DeletedWordListTombstone,
   type SyncSnapshot,
 } from "../sync/types";
 import {
   DEFAULT_SYNC_TIMESTAMP,
+  getDeletedWordListUpdatedAt,
   getWordListUpdatedAt,
+  mergeDeletedWordListTombstones,
   mergeQuizStats,
+  resolveWordListSnapshotState,
 } from "../sync/merge";
 import { markLocalDataDirty } from "../sync/local";
 import { assertSyncMutationAllowed } from "../sync/runtime";
@@ -53,19 +57,17 @@ function getWordListPath(name: string) {
 
 type LocalSyncMetadata = {
   settingsUpdatedAt: string;
+  deletedWordLists: DeletedWordListTombstone[];
 };
 
 type SaveMutationOptions = {
   markDirty?: boolean;
-};
-
-type SaveWordListOptions = SaveMutationOptions & {
   updatedAt?: string;
 };
 
-type SaveSettingsOptions = SaveMutationOptions & {
-  updatedAt?: string;
-};
+type SaveWordListOptions = SaveMutationOptions;
+
+type SaveSettingsOptions = SaveMutationOptions;
 
 function getCurrentTimestamp() {
   return new Date().toISOString();
@@ -77,10 +79,33 @@ async function readLocalSyncMetadata(): Promise<LocalSyncMetadata> {
     const parsed = JSON.parse(raw) as Partial<LocalSyncMetadata>;
     return {
       settingsUpdatedAt: parsed.settingsUpdatedAt ?? DEFAULT_SYNC_TIMESTAMP,
+      deletedWordLists: Array.isArray(parsed.deletedWordLists)
+        ? parsed.deletedWordLists
+            .map((wordList) => {
+              if (!wordList || typeof wordList !== "object") {
+                return null;
+              }
+
+              const candidate = wordList as Partial<DeletedWordListTombstone>;
+              if (typeof candidate.name !== "string") {
+                return null;
+              }
+
+              return {
+                name: candidate.name,
+                deletedAt:
+                  typeof candidate.deletedAt === "string"
+                    ? candidate.deletedAt
+                    : DEFAULT_SYNC_TIMESTAMP,
+              };
+            })
+            .filter(Boolean) as DeletedWordListTombstone[]
+        : [],
     };
   } catch {
     return {
       settingsUpdatedAt: DEFAULT_SYNC_TIMESTAMP,
+      deletedWordLists: [],
     };
   }
 }
@@ -94,6 +119,35 @@ async function writeLocalSyncMetadata(metadata: LocalSyncMetadata) {
   if (!success) {
     throw new Error("Could not save local sync metadata.");
   }
+}
+
+async function markWordListDeleted(name: string, deletedAt: string) {
+  const metadata = await readLocalSyncMetadata();
+  const nextDeletedWordLists = mergeDeletedWordListTombstones(
+    metadata.deletedWordLists,
+    [{ name, deletedAt }],
+  );
+
+  await writeLocalSyncMetadata({
+    ...metadata,
+    deletedWordLists: nextDeletedWordLists,
+  });
+}
+
+async function clearDeletedWordList(name: string) {
+  const metadata = await readLocalSyncMetadata();
+  const nextDeletedWordLists = metadata.deletedWordLists.filter(
+    (wordList) => wordList.name !== name,
+  );
+
+  if (nextDeletedWordLists.length === metadata.deletedWordLists.length) {
+    return;
+  }
+
+  await writeLocalSyncMetadata({
+    ...metadata,
+    deletedWordLists: nextDeletedWordLists,
+  });
 }
 
 function normalizeStoredWordList(
@@ -215,6 +269,8 @@ export async function saveNewWordList(
     throw new Error("Could not save new list.");
   }
 
+  await clearDeletedWordList(nextWordList.metadata.name);
+
   if (options.markDirty ?? true) {
     markLocalDataDirty("wordlists");
   }
@@ -237,6 +293,8 @@ export async function deleteWordListByName(
   if (!success) {
     throw new Error("Could not delete word set.");
   }
+
+  await markWordListDeleted(name, options.updatedAt ?? getCurrentTimestamp());
 
   if (options.markDirty ?? true) {
     markLocalDataDirty("wordlists");
@@ -264,6 +322,62 @@ export async function saveEditedWordList(
 
   await saveNewWordList(nextList, options);
   return nextList;
+}
+
+export async function renameWordListByName(
+  currentName: string,
+  nextName: string,
+  options: SaveMutationOptions = {},
+): Promise<StoredWordList> {
+  if (options.markDirty ?? true) {
+    assertSyncMutationAllowed();
+  }
+
+  const normalizedCurrentName = currentName.trim();
+  const normalizedNextName = nextName.trim();
+
+  if (normalizedCurrentName === "") {
+    throw new Error("The current word set name is empty.");
+  }
+
+  if (normalizedNextName === "") {
+    throw new Error("Enter a name for the word set.");
+  }
+
+  if (normalizedCurrentName === normalizedNextName) {
+    return getWordListByName(normalizedCurrentName);
+  }
+
+  const existingWordLists = await getAllWordListSummaries();
+  if (existingWordLists.some((wordList) => wordList.name === normalizedNextName)) {
+    throw new Error(`A word set named "${normalizedNextName}" already exists.`);
+  }
+
+  const existingWordSet = await getWordListByName(normalizedCurrentName);
+  const updatedAt = options.updatedAt ?? getCurrentTimestamp();
+  const renamedWordSet: StoredWordList = {
+    ...existingWordSet,
+    metadata: {
+      ...existingWordSet.metadata,
+      name: normalizedNextName,
+      updatedAt,
+    },
+  };
+
+  await saveNewWordList(renamedWordSet, {
+    markDirty: false,
+    updatedAt,
+  });
+  await deleteWordListByName(normalizedCurrentName, {
+    markDirty: false,
+    updatedAt,
+  });
+
+  if (options.markDirty ?? true) {
+    markLocalDataDirty("wordlists");
+  }
+
+  return renamedWordSet;
 }
 
 export async function initializeBuiltInWordLists() {
@@ -328,7 +442,9 @@ export async function saveSettings(
     throw new Error("Could not save settings.");
   }
 
+  const metadata = await readLocalSyncMetadata();
   await writeLocalSyncMetadata({
+    ...metadata,
     settingsUpdatedAt: options.updatedAt ?? getCurrentTimestamp(),
   });
 
@@ -542,6 +658,7 @@ export async function getLocalAppSnapshot(): Promise<SyncSnapshot> {
     wordLists: wordLists.map((wordList) =>
       normalizeStoredWordList(wordList, exportedAt),
     ),
+    deletedWordLists: settingsMeta.deletedWordLists,
     settings,
     settingsUpdatedAt: settingsMeta.settingsUpdatedAt,
     stats,
@@ -552,16 +669,35 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
   const [localWordLists, localSettingsMeta, localStatsStore] = await Promise.all(
     [getAllStoredWordLists(), readLocalSyncMetadata(), readVersionedQuizStats()],
   );
+  const resolvedSnapshotState = resolveWordListSnapshotState(
+    snapshot.wordLists,
+    snapshot.deletedWordLists,
+  );
 
   const localWordListsByName = new Map(
     localWordLists.map((wordList) => [wordList.metadata.name, wordList]),
   );
+  const localDeletedWordListsByName = new Map(
+    localSettingsMeta.deletedWordLists.map((wordList) => [wordList.name, wordList]),
+  );
 
-  for (const incomingWordList of snapshot.wordLists) {
+  for (const incomingWordList of resolvedSnapshotState.wordLists) {
     const normalizedIncomingWordList = normalizeStoredWordList(
       incomingWordList,
       snapshot.exportedAt,
     );
+    const localDeletedWordList = localDeletedWordListsByName.get(
+      normalizedIncomingWordList.metadata.name,
+    );
+
+    if (
+      localDeletedWordList &&
+      getDeletedWordListUpdatedAt(localDeletedWordList) >=
+        getWordListUpdatedAt(normalizedIncomingWordList)
+    ) {
+      continue;
+    }
+
     const currentWordList = localWordListsByName.get(
       normalizedIncomingWordList.metadata.name,
     );
@@ -575,8 +711,43 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
         markDirty: false,
         updatedAt: normalizedIncomingWordList.metadata.updatedAt,
       });
+      localWordListsByName.set(
+        normalizedIncomingWordList.metadata.name,
+        normalizedIncomingWordList,
+      );
     }
   }
+
+  const mergedDeletedWordLists = mergeDeletedWordListTombstones(
+    localSettingsMeta.deletedWordLists,
+    resolvedSnapshotState.deletedWordLists,
+  );
+
+  for (const deletedWordList of mergedDeletedWordLists) {
+    const currentWordList = localWordListsByName.get(deletedWordList.name);
+
+    if (
+      currentWordList &&
+      getDeletedWordListUpdatedAt(deletedWordList) >=
+        getWordListUpdatedAt(currentWordList)
+    ) {
+      await deleteWordListByName(deletedWordList.name, {
+        markDirty: false,
+        updatedAt: deletedWordList.deletedAt,
+      });
+      localWordListsByName.delete(deletedWordList.name);
+    }
+  }
+
+  const resolvedLocalState = resolveWordListSnapshotState(
+    Array.from(localWordListsByName.values()),
+    mergedDeletedWordLists,
+  );
+
+  await writeLocalSyncMetadata({
+    ...localSettingsMeta,
+    deletedWordLists: resolvedLocalState.deletedWordLists,
+  });
 
   if (snapshot.settingsUpdatedAt > localSettingsMeta.settingsUpdatedAt) {
     await saveSettings(snapshot.settings, {

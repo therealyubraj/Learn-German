@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   deleteWordListByName,
   getWordListByName,
+  renameWordListByName,
   saveEditedWordList,
 } from "../FS/utils";
 import { showToast } from "../Toast";
@@ -106,6 +107,10 @@ export function WordSetEditor() {
     return items.find((item) => item.id === editingItemId) ?? null;
   }, [editingItemId, items]);
 
+  function hasRequiredItemFields(values: ItemFormValues) {
+    return values.LHS.trim() !== "" && values.RHS.trim() !== "";
+  }
+
   async function persistItems(
     nextItems: ItemFormValues[],
     successMessage: string,
@@ -193,6 +198,13 @@ export function WordSetEditor() {
   }
 
   async function handleAddSingleItem() {
+    if (!hasRequiredItemFields(singleItemDraft)) {
+      const message = "LHS and RHS are required.";
+      setError(message);
+      showToast(message);
+      return;
+    }
+
     const shouldAdd = window.confirm(
       `Add "${singleItemDraft.LHS.trim() || "this item"}" to "${wordSetName}"?`,
     );
@@ -249,6 +261,13 @@ export function WordSetEditor() {
       return;
     }
 
+    if (!hasRequiredItemFields(editingDraft)) {
+      const message = "LHS and RHS are required.";
+      setError(message);
+      showToast(message);
+      return;
+    }
+
     const nextItems = items.map((item) =>
       item.id === editingItem.id ? editingDraft : getItemFormValues(item),
     );
@@ -300,13 +319,49 @@ export function WordSetEditor() {
       setError(null);
       await deleteWordListByName(wordSetName);
       showToast("Word set deleted.");
-      navigate("/quiz-selection");
+      navigate("/");
     } catch (deleteError) {
       const message = (deleteError as Error).message;
       setError(message);
       showToast(message);
     } finally {
       setIsDeletingSet(false);
+    }
+  }
+
+  async function handleRenameWordSet() {
+    if (!wordSetName) {
+      return;
+    }
+
+    const nextName = window.prompt("Enter a new name for this word set.", wordSetName);
+
+    if (nextName === null) {
+      return;
+    }
+
+    if (nextName.trim() === wordSetName) {
+      return;
+    }
+
+    try {
+      setIsMutating(true);
+      setError(null);
+
+      const renamedWordSet = await renameWordListByName(wordSetName, nextName);
+      showToast("Word set renamed.");
+      navigate(
+        `/word-sets/${encodeURIComponent(renamedWordSet.metadata.name)}/edit`,
+        {
+          replace: true,
+        },
+      );
+    } catch (renameError) {
+      const message = (renameError as Error).message;
+      setError(message);
+      showToast(message);
+    } finally {
+      setIsMutating(false);
     }
   }
 
@@ -339,10 +394,12 @@ export function WordSetEditor() {
             ) : (
               <div className="flex flex-col gap-6">
                 <ActionsSection
+                  wordSetName={wordSetName}
                   isMutating={isMutating}
                   isDeletingSet={isDeletingSet}
                   isLoading={isLoading}
                   onAddItem={() => openAddModal("single")}
+                  onRenameSet={handleRenameWordSet}
                   onDeleteSet={handleDeleteWordSet}
                 />
 

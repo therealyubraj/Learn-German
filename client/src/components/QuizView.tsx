@@ -28,7 +28,7 @@ export function QuizView({
 
         <div className="flex justify-center pt-1 sm:pt-2">
           <Link
-            to="/quiz-selection"
+            to="/"
             className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-[#F85149]/45 bg-[#F85149]/8 px-[22px] py-[14px] text-sm font-medium text-[#FF7B72] transition-colors hover:border-[#F85149] hover:bg-[#F85149]/14 hover:text-[#FFA198] sm:mt-[20px]"
           >
             Exit quiz
