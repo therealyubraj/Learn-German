@@ -36,16 +36,26 @@ function ButtonLabel({
   label,
   vimKey,
   showVimKey,
+  centered = false,
 }: {
   label: string;
   vimKey?: string;
   showVimKey: boolean;
+  centered?: boolean;
 }) {
   return (
-    <span className="flex w-full items-center justify-between gap-3">
+    <span
+      className={`flex w-full items-center gap-3 ${
+        centered ? "relative justify-center" : "justify-between"
+      }`}
+    >
       <span>{label}</span>
       {showVimKey && vimKey ? (
-        <span className="inline-flex min-w-[3.25rem] items-center justify-center rounded-full border border-current/20 bg-[#0D1117]/40 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em]">
+        <span
+          className={`inline-flex min-w-[3.25rem] items-center justify-center rounded-full border border-current/20 bg-[#0D1117]/40 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] ${
+            centered ? "absolute right-0 top-1/2 -translate-y-1/2" : ""
+          }`}
+        >
           {vimKey}
         </span>
       ) : null}
@@ -164,89 +174,118 @@ export function QuizControls({
         />
       </div>
 
-      <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
-        {controlState === "guessing" ? (
-          <p className="text-center text-sm font-medium text-[#E6EDF3]">
-            Type the German translation, then check your answer.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-col gap-3">
-              <p className="text-sm font-medium text-[#E6EDF3]">
-                {item.remarks || `Correct answer: ${item.RHS}`}
-              </p>
-              {hasRemarksTranslation && isRemarksTranslationVisible ? (
-                <p className="text-sm text-[#8B949E]">{item.remarksEN}</p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-3">
-              {hasRemarksTranslation ? (
-                <button
-                  type="button"
-                  className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 px-4 py-2 text-xs`}
-                  onClick={() =>
-                    setIsRemarksTranslationVisible((current) => !current)
-                  }
-                  disabled={isSpeaking}
-                  data-vim-key="t"
-                >
-                  <ButtonLabel
-                    label={
-                      isRemarksTranslationVisible
-                        ? "Hide translation"
-                        : "Show translation"
-                    }
-                    vimKey="T"
-                    showVimKey={showVimBindings}
-                  />
-                </button>
-              ) : null}
-              {hasRemarks ? (
-                <button
-                  type="button"
-                  className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 shrink-0 px-4 py-2 text-xs`}
-                  onClick={handleSpeakRemarks}
-                  disabled={isSpeaking}
-                  data-vim-key="r"
-                >
-                  <ButtonLabel
-                    label="Speak remarks"
-                    vimKey="R"
-                    showVimKey={showVimBindings}
-                  />
-                </button>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="flex flex-col gap-4">
-        <button
-          className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
-          onClick={handleCheckAnswer}
-          disabled={controlState !== "guessing" || isSpeaking}
-          data-vim-key="Enter"
+        {controlState === "guessing" ? (
+          <>
+            <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
+              <p className="text-center text-sm font-medium text-[#E6EDF3]">
+                Type the German translation, then check your answer.
+              </p>
+            </div>
+
+            <button
+              className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
+              onClick={handleCheckAnswer}
+              disabled={isSpeaking}
+              data-vim-key="Enter"
+            >
+              <ButtonLabel
+                label="Check answer"
+                vimKey="Enter"
+                showVimKey={showVimBindings}
+              />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
+              onClick={handleNextQuestion}
+              disabled={isSpeaking}
+              data-vim-key="n"
+            >
+              <ButtonLabel
+                label="Next question"
+                vimKey="N"
+                showVimKey={showVimBindings}
+                centered
+              />
+            </button>
+
+            <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
+              <div className="flex flex-col gap-4">
+                <div className="flex min-w-0 flex-col gap-3">
+                  <p className="text-sm font-medium text-[#E6EDF3]">
+                    {item.remarks || `Correct answer: ${item.RHS}`}
+                  </p>
+                  {hasRemarksTranslation && isRemarksTranslationVisible ? (
+                    <p className="text-sm text-[#8B949E]">{item.remarksEN}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  {hasRemarksTranslation ? (
+                    <button
+                      type="button"
+                      className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 px-4 py-2 text-xs`}
+                      onClick={() =>
+                        setIsRemarksTranslationVisible((current) => !current)
+                      }
+                      disabled={isSpeaking}
+                      data-vim-key="t"
+                    >
+                      <ButtonLabel
+                        label={
+                          isRemarksTranslationVisible
+                            ? "Hide translation"
+                            : "Show translation"
+                        }
+                        vimKey="T"
+                        showVimKey={showVimBindings}
+                      />
+                    </button>
+                  ) : null}
+                  {hasRemarks ? (
+                    <button
+                      type="button"
+                      className={`${buttonStyles.base} ${buttonStyles.quiet} min-h-11 shrink-0 px-4 py-2 text-xs`}
+                      onClick={handleSpeakRemarks}
+                      disabled={isSpeaking}
+                      data-vim-key="r"
+                    >
+                      <ButtonLabel
+                        label="Speak remarks"
+                        vimKey="R"
+                        showVimKey={showVimBindings}
+                      />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div
+          className={`grid gap-4 ${
+            controlState === "guessing" ? "sm:grid-cols-1" : "sm:grid-cols-2"
+          }`}
         >
-          <ButtonLabel
-            label="Check answer"
-            vimKey="Enter"
-            showVimKey={showVimBindings}
-          />
-        </button>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <button
-            className={`${buttonStyles.base} ${buttonStyles.quiet}`}
-            onClick={handlePlaySound}
-            disabled={!canRevealAnswer || isSpeaking}
-            data-vim-key="s"
-          >
-            <ButtonLabel
-              label="Listen"
-              vimKey="S"
-              showVimKey={showVimBindings}
-            />
-          </button>
+          {controlState !== "guessing" ? (
+            <button
+              className={`${buttonStyles.base} ${buttonStyles.quiet}`}
+              onClick={handlePlaySound}
+              disabled={!canRevealAnswer || isSpeaking}
+              data-vim-key="s"
+            >
+              <ButtonLabel
+                label="Listen again"
+                vimKey="S"
+                showVimKey={showVimBindings}
+              />
+            </button>
+          ) : null}
+
           <button
             className={`${buttonStyles.base} ${buttonStyles.secondary}`}
             onClick={handleGiveUp}
@@ -259,21 +298,8 @@ export function QuizControls({
               showVimKey={showVimBindings}
             />
           </button>
-          <button
-            className={`${buttonStyles.base} ${buttonStyles.secondary}`}
-            onClick={handleNextQuestion}
-            disabled={controlState === "guessing" || isSpeaking}
-            data-vim-key="n"
-          >
-            <ButtonLabel
-              label="Next question"
-              vimKey="N"
-              showVimKey={showVimBindings}
-            />
-          </button>
         </div>
       </div>
-
     </div>
   );
 }

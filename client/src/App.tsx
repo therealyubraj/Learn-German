@@ -1,6 +1,5 @@
 import { Routes, Route, Link } from "react-router-dom";
 import { useEffect } from "react";
-import "./App.css";
 import { UserImport } from "./components/UserImport";
 import { OPFSExplorer } from "./components/OPFS";
 import { Navbar } from "./components/Navbar";

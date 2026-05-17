@@ -1,101 +1,217 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Source - https://stackoverflow.com/a/79449026
+Posted by Susmit Ullas
+Retrieved 2025-11-23, License - CC BY-SA 4.0
+*/
 
-@layer utilities {
-  .animate-shake {
-    animation: shake 0.5s ease-in-out;
+@import "tailwindcss";
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
   }
 
+  :root {
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color: #e6edf3;
+    background-color: #0d1117;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body {
+    @apply bg-gray-950 text-gray-100;
+    min-height: 100vh;
+    min-width: 320px;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+    transition:
+      color 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease,
+      opacity 160ms ease;
+  }
+
+  a:hover {
+    color: #00ff9c;
+  }
+
+  button {
+    border: 1px solid transparent;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease,
+      opacity 160ms ease;
+  }
+
+  button:hover {
+    border-color: #00c896;
+  }
+
+  a:focus,
+  a:focus-visible,
+  button:focus,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 200, 150, 0.2);
+  }
+
+  a:active,
+  button:active {
+    transform: translateY(1px) scale(0.995);
+  }
+
+  button:disabled,
+  a[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  * {
+    scrollbar-width: none;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quiz-selection-scroll {
+    scrollbar-width: auto;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar {
+    display: block;
+    width: 10px;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-track {
+    background: #161b22;
+    border-radius: 9999px;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 9999px;
+    border: 2px solid #161b22;
+  }
+
+  .quiz-selection-scroll::-webkit-scrollbar-thumb:hover {
+    background: #8b949e;
+  }
+
+  .settings-number-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  .settings-number-input::-webkit-outer-spin-button,
+  .settings-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    background: #4b5563;
+    border-radius: 0.5rem;
+    height: 0.5rem;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: none;
+    height: 1.25rem;
+    width: 1.25rem;
+    border-radius: 9999px;
+    background: #00c896;
+    margin-top: -0.375rem;
+    box-shadow: 0 0 0 0.25rem rgba(0, 200, 150, 0.18);
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: #4b5563;
+    border-radius: 0.5rem;
+    height: 0.5rem;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    border: none;
+    height: 1.25rem;
+    width: 1.25rem;
+    border-radius: 9999px;
+    background: #00c896;
+    box-shadow: 0 0 0 0.25rem rgba(0, 200, 150, 0.18);
+  }
+}
+
+@layer utilities {
   @keyframes shake {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(0);
     }
-    10%, 30%, 50%, 70%, 90% {
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
       transform: translateX(-5px);
     }
-    20%, 40%, 60%, 80% {
+
+    20%,
+    40%,
+    60%,
+    80% {
       transform: translateX(5px);
     }
   }
-}
 
-:root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #e6edf3;
-  background-color: #0d1117;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  color: inherit;
-  text-decoration: inherit;
-  transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    opacity 160ms ease;
-}
-
-a:hover {
-  color: #00ff9c;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-button {
-  border: 1px solid transparent;
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    opacity 160ms ease;
-}
-
-button:hover {
-  border-color: #00c896;
-}
-
-a:focus,
-a:focus-visible,
-button:focus,
-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 200, 150, 0.2);
-}
-
-a:active,
-button:active {
-  transform: translateY(1px) scale(0.995);
-}
-
-button:disabled,
-a[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
+  .shake,
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
 }
