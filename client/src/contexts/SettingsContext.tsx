@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { AppSettings } from "../types";
 import { readSavedSettings } from "../FS/utils";
+import { tts } from "../tts/tts";
 
 // Define the shape of your settings
 // Define the shape of your context
@@ -20,7 +21,7 @@ export const defaultSettings: AppSettings = {
     poolSize: 5,
   },
   vim: {
-    enabled: false,
+    enabled: true,
   },
   tts: {
     voiceName: "Google Deutsch",
@@ -45,7 +46,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     async function fetchAndSetSettings() {
       const savedSettings = await readSavedSettings();
-      setSettings(savedSettings);
+      setSettings({
+        ...savedSettings,
+        tts: {
+          ...savedSettings.tts,
+          voiceName: tts.resolveVoiceName(savedSettings.tts.voiceName),
+        },
+      });
     }
     fetchAndSetSettings();
   }, []);
