@@ -43,6 +43,16 @@ export function clearStoredSyncSession() {
   window.dispatchEvent(new Event(SYNC_SESSION_CHANGED_EVENT));
 }
 
+export function clearLocalSyncClientState() {
+  if (!canUseWindow()) {
+    return;
+  }
+
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.localStorage.removeItem(CLIENT_INSTALLATION_ID_KEY);
+  window.dispatchEvent(new Event(SYNC_SESSION_CHANGED_EVENT));
+}
+
 export function getOrCreateClientInstallationId() {
   if (!canUseWindow()) {
     return crypto.randomUUID();

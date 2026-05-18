@@ -30,6 +30,10 @@ export function clearLocalDataDirty() {
   window.localStorage.removeItem(DIRTY_REASON_KEY);
 }
 
+export function resetLocalDataDirtyState() {
+  clearLocalDataDirty();
+}
+
 export function isLocalDataDirty() {
   if (!canUseWindow()) {
     return false;

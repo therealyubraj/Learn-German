@@ -26,6 +26,15 @@ export function setSyncMutationRuntimeState(state: SyncMutationRuntimeState) {
   );
 }
 
+export function clearSyncMutationRuntimeState() {
+  if (!canUseWindow()) {
+    return;
+  }
+
+  window.localStorage.removeItem(SYNC_RUNTIME_SESSION_KEY);
+  window.localStorage.removeItem(SYNC_RUNTIME_REQUIRES_SYNC_KEY);
+}
+
 function hasLoggedInSyncSession() {
   if (!canUseWindow()) {
     return false;

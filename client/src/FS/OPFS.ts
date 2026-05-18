@@ -1,6 +1,20 @@
 import { IStorageProvider, LSResponse } from "./IStorageProvider";
 
 export class OPFS extends IStorageProvider {
+  async clearAll(): Promise<void> {
+    if (!navigator.storage.getDirectory) {
+      throw new Error("OPFS is not supported in this browser.");
+    }
+
+    const root = await navigator.storage.getDirectory();
+
+    for await (const [name, handle] of (root as any).entries()) {
+      await root.removeEntry(name, {
+        recursive: handle.kind === "directory",
+      });
+    }
+  }
+
   private async getFileHandle(
     path: string,
     options: { create?: boolean } = {}

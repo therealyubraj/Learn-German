@@ -18,52 +18,57 @@ export async function getSessionContext(
     return null;
   }
 
-  const tokenHash = await sha256(rawToken);
-  const sessionRow = await env.DB.prepare(
-    `
-      SELECT
-        sessions.user_id,
-        sessions.device_id,
-        sessions.expires_at,
-        users.email,
-        users.latest_revision,
-        devices.name,
-        devices.client_installation_id,
-        devices.last_applied_revision
-      FROM sessions
-      INNER JOIN users ON users.id = sessions.user_id
-      INNER JOIN devices ON devices.id = sessions.device_id
-      WHERE sessions.token_hash = ?
-      LIMIT 1
-    `,
-  )
-    .bind(tokenHash)
-    .first<{
-      user_id: string;
-      device_id: string;
-      expires_at: string;
-      email: string;
-      latest_revision: number;
-      name: string;
-      client_installation_id: string;
-      last_applied_revision: number;
-    }>();
+  try {
+    const tokenHash = await sha256(rawToken);
+    const sessionRow = await env.DB.prepare(
+      `
+        SELECT
+          sessions.user_id,
+          sessions.device_id,
+          sessions.expires_at,
+          users.email,
+          users.latest_revision,
+          devices.name,
+          devices.client_installation_id,
+          devices.last_applied_revision
+        FROM sessions
+        INNER JOIN users ON users.id = sessions.user_id
+        INNER JOIN devices ON devices.id = sessions.device_id
+        WHERE sessions.token_hash = ?
+        LIMIT 1
+      `,
+    )
+      .bind(tokenHash)
+      .first<{
+        user_id: string;
+        device_id: string;
+        expires_at: string;
+        email: string;
+        latest_revision: number;
+        name: string;
+        client_installation_id: string;
+        last_applied_revision: number;
+      }>();
 
-  if (!sessionRow || sessionRow.expires_at < nowIso()) {
+    if (!sessionRow || sessionRow.expires_at < nowIso()) {
+      return null;
+    }
+
+    return {
+      token: rawToken,
+      userId: sessionRow.user_id,
+      email: sessionRow.email,
+      deviceId: sessionRow.device_id,
+      deviceName: sessionRow.name,
+      clientInstallationId: sessionRow.client_installation_id,
+      sessionExpiresAt: sessionRow.expires_at,
+      lastKnownRevision: sessionRow.latest_revision,
+      lastAppliedRevision: sessionRow.last_applied_revision,
+    };
+  } catch (error) {
+    console.error("Failed to resolve auth session.", error);
     return null;
   }
-
-  return {
-    token: rawToken,
-    userId: sessionRow.user_id,
-    email: sessionRow.email,
-    deviceId: sessionRow.device_id,
-    deviceName: sessionRow.name,
-    clientInstallationId: sessionRow.client_installation_id,
-    sessionExpiresAt: sessionRow.expires_at,
-    lastKnownRevision: sessionRow.latest_revision,
-    lastAppliedRevision: sessionRow.last_applied_revision,
-  };
 }
 
 export async function upsertUser(email: string, env: Env) {

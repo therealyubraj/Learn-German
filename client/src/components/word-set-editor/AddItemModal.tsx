@@ -7,9 +7,11 @@ const llmJsonPrompt = `You are preparing quiz items for a German vocabulary app.
 Return only valid JSON.
 Return a JSON array of objects.
 Do not include markdown fences.
-Do not include explanations before or after the JSON.
 
 Each object should use this shape:
+Appropriately put words into categories like: Nouns, Verbs, etc. and if I give you my own categories, use that instead.
+For each category output one List if that list contains any word from what I have given.
+
 [
   {
     "LHS": "source-side prompt",

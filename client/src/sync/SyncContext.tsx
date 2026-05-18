@@ -364,7 +364,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const storedSession = getStoredSyncSession();
 
       if (!storedSession) {
-        updateSession(null);
+        setSession(null);
         setOtherDevices([]);
         setHasPendingRemoteUpload(false);
         setLatestRevision(0);
@@ -374,7 +374,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      updateSession(storedSession);
+      setSession(storedSession);
       setError(null);
       updateMutationRuntime(storedSession, false);
     }
