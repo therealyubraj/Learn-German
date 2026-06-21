@@ -98,6 +98,8 @@ export function SyncPage() {
     requestTotpEnrollmentLink,
     loginWithTotpCode,
     syncNow,
+    uploadThisDeviceCompletely,
+    downloadRemoteCompletely,
     logoutFromSync,
   } = useSync();
   const [authMode, setAuthMode] = useState<AuthMode>("signIn");
@@ -118,13 +120,24 @@ export function SyncPage() {
     otherDevices.some(
       (device) => device.lastUploadedRevision > session.lastAppliedRevision,
     );
+  const thisDeviceIsBehind =
+    !!session && latestRevision > session.lastAppliedRevision;
+  const isFullySynced =
+    !!session &&
+    isOnline &&
+    !requiresSyncBeforeUse &&
+    !hasRemoteDeviceAhead &&
+    !hasPendingRemoteUpload &&
+    !thisDeviceIsBehind &&
+    latestRevision === session.lastAppliedRevision &&
+    lastSyncedAt !== null;
 
   const syncStateText = useMemo(() => {
     if (!isOnline) {
       return "This device is offline. Reconnect before making synced changes.";
     }
 
-    if (requiresSyncBeforeUse || hasRemoteDeviceAhead) {
+    if (requiresSyncBeforeUse || hasRemoteDeviceAhead || thisDeviceIsBehind) {
       return "Another device has newer synced changes. Open a sync run on this device to pull them in.";
     }
 
@@ -132,17 +145,23 @@ export function SyncPage() {
       return "Local changes are queued for upload.";
     }
 
+    if (isFullySynced && lastSyncedAt) {
+      return `Fully synced at ${new Date(lastSyncedAt).toLocaleString()}.`;
+    }
+
     if (lastSyncedAt) {
-      return `Last synced at ${new Date(lastSyncedAt).toLocaleString()}.`;
+      return `Last sync finished at ${new Date(lastSyncedAt).toLocaleString()}, but this device has not confirmed the latest server revision yet.`;
     }
 
     return "No sync has run on this device yet.";
   }, [
     hasPendingRemoteUpload,
     hasRemoteDeviceAhead,
+    isFullySynced,
     isOnline,
     lastSyncedAt,
     requiresSyncBeforeUse,
+    thisDeviceIsBehind,
   ]);
 
   async function handleRequestEnrollment() {
@@ -376,12 +395,25 @@ export function SyncPage() {
                     Sync State
                   </p>
                   <p className="mt-2 text-base font-medium text-[#E6EDF3]">
-                    Revision {latestRevision}
+                    Server revision {latestRevision}
+                  </p>
+                  <p className="mt-1 text-xs text-[#8B949E]">
+                    This device applied revision {session.lastAppliedRevision}
                   </p>
                   <p className="mt-2 text-sm text-[#8B949E]">{syncStateText}</p>
-                  {requiresSyncBeforeUse || hasRemoteDeviceAhead ? (
+                  {isFullySynced ? (
+                    <div className="mt-3 inline-flex rounded-full border border-[#00C896]/35 bg-[#00C896]/10 px-3 py-1 text-xs font-medium text-[#00FF9C]">
+                      Fully synced
+                    </div>
+                  ) : null}
+                  {requiresSyncBeforeUse || hasRemoteDeviceAhead || thisDeviceIsBehind ? (
                     <div className="mt-3 inline-flex rounded-full border border-[#F59E0B]/45 bg-[#F59E0B]/10 px-3 py-1 text-xs font-medium text-[#FCD34D]">
                       Another device is ahead of this one
+                    </div>
+                  ) : null}
+                  {hasPendingRemoteUpload ? (
+                    <div className="mt-3 inline-flex rounded-full border border-[#F59E0B]/45 bg-[#F59E0B]/10 px-3 py-1 text-xs font-medium text-[#FCD34D]">
+                      Upload pending
                     </div>
                   ) : null}
                 </div>
@@ -410,6 +442,35 @@ export function SyncPage() {
                 >
                   Disconnect
                 </button>
+              </div>
+            </SyncSection>
+
+            <SyncSection
+              title="Repair Sync"
+              description="Use these only when devices disagree. Upload from the device that has the correct data, then download on the stale device."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={isSyncing || !isOnline}
+                  onClick={() => void uploadThisDeviceCompletely()}
+                  className={`${actionButtonClassName} border-[#00C896] bg-[#00C896] text-[#0D1117] hover:bg-[#00FF9C]`}
+                >
+                  {isSyncing ? "Working..." : "Upload this device completely"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSyncing || !isOnline}
+                  onClick={() => void downloadRemoteCompletely()}
+                  className={`${actionButtonClassName} border-[#30363D] bg-[#0D1117] text-[#E6EDF3] hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]`}
+                >
+                  {isSyncing ? "Working..." : "Sync completely to this device"}
+                </button>
+              </div>
+              <div className="mt-4 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px] text-sm leading-6 text-[#8B949E]">
+                Download replaces this device's local cache with the server
+                copy. Upload sends this device's complete local copy to the
+                server and then refreshes this device from the server response.
               </div>
             </SyncSection>
 

@@ -3,10 +3,10 @@ import { useVimMode } from "../contexts/VimModeContext";
 import { useSettings } from "../contexts/SettingsContext";
 
 export const VimModeIndicator = () => {
-  const { vimMode } = useVimMode();
+  const { vimMode, isVimActive } = useVimMode();
   const { settings } = useSettings();
 
-  if (!settings.vim.enabled) {
+  if (!settings.vim.enabled || !isVimActive) {
     return null;
   }
 

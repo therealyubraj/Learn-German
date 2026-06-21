@@ -7,11 +7,13 @@ import React, {
   useState,
 } from "react";
 import { showToast } from "../Toast";
+import type { VersionedQuizStats } from "../types";
 import {
   applySyncSnapshot,
   getAllStoredWordLists,
   getLocalAppSnapshot,
   readVersionedQuizStats,
+  writeStats,
 } from "../FS/utils";
 import {
   acknowledgeSyncRevision,
@@ -77,6 +79,12 @@ type SyncContextValue = {
     deviceName?: string,
   ) => Promise<void>;
   syncNow: () => Promise<void>;
+  uploadThisDeviceCompletely: () => Promise<void>;
+  downloadRemoteCompletely: () => Promise<void>;
+  saveStatsDeltaImmediately: (
+    stats: VersionedQuizStats["stats"],
+    statKeys: string[],
+  ) => Promise<VersionedQuizStats["stats"]>;
   logoutFromSync: () => Promise<void>;
 };
 
@@ -138,6 +146,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function markRevisionApplied(activeSession: AuthSession, revision: number) {
+    const syncedSession = {
+      ...activeSession,
+      lastKnownRevision: revision,
+      lastAppliedRevision: revision,
+    };
+
+    updateSession(syncedSession);
+    updateMutationRuntime(syncedSession, false);
+    setLatestRevision(revision);
+    setHasPendingRemoteUpload(false);
+    setRequiresSyncBeforeUse(false);
+    setLastSyncedAt(new Date().toISOString());
+  }
+
   async function runSyncCycle(
     options: {
       blocking: boolean;
@@ -195,17 +218,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const pushed = await pushSyncSnapshot(activeSession.token, snapshot);
         await applySyncSnapshot(pushed.snapshot);
         clearLocalDataDirty();
-        setLatestRevision(pushed.revision);
-        setHasPendingRemoteUpload(false);
-        setRequiresSyncBeforeUse(false);
-
-        const syncedSession = {
-          ...nextSession,
-          lastKnownRevision: pushed.revision,
-          lastAppliedRevision: pushed.revision,
-        };
-        updateSession(syncedSession);
-        updateMutationRuntime(syncedSession, false);
+        markRevisionApplied(nextSession, pushed.revision);
       } else if (isLocalDataDirty()) {
         if (status.hasSnapshot && hasOnlyDirtyStats() && getDirtyStatKeys().length > 0) {
           setSyncMessage("Uploading practice progress...");
@@ -230,15 +243,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             });
 
             clearDirtyStatKeys(pushed.appliedStatKeys);
-            setLatestRevision(pushed.revision);
-
-            const syncedSession = {
-              ...nextSession,
-              lastKnownRevision: pushed.revision,
-              lastAppliedRevision: pushed.revision,
-            };
-            updateSession(syncedSession);
-            updateMutationRuntime(syncedSession, false);
+            markRevisionApplied(nextSession, pushed.revision);
           } else {
             clearDirtyStatKeys(dirtyStatKeys);
           }
@@ -248,15 +253,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           const pushed = await pushSyncSnapshot(activeSession.token, snapshot);
           await applySyncSnapshot(pushed.snapshot);
           clearLocalDataDirty();
-          setLatestRevision(pushed.revision);
-
-          const syncedSession = {
-            ...nextSession,
-            lastKnownRevision: pushed.revision,
-            lastAppliedRevision: pushed.revision,
-          };
-          updateSession(syncedSession);
-          updateMutationRuntime(syncedSession, false);
+          markRevisionApplied(nextSession, pushed.revision);
         }
 
         setHasPendingRemoteUpload(false);
@@ -272,17 +269,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           }
           await acknowledgeSyncRevision(activeSession.token, pulled.revision);
           clearLocalDataDirty();
-          setLatestRevision(pulled.revision);
-          setHasPendingRemoteUpload(false);
-          setRequiresSyncBeforeUse(false);
-
-          const syncedSession = {
-            ...nextSession,
-            lastKnownRevision: pulled.revision,
-            lastAppliedRevision: pulled.revision,
-          };
-          updateSession(syncedSession);
-          updateMutationRuntime(syncedSession, false);
+          markRevisionApplied(nextSession, pulled.revision);
         } else {
           setSyncMessage(
             "Another device has newer changes. Sync this device before continuing.",
@@ -390,6 +377,157 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       reason: "Syncing your words and stats...",
       mode: "sync",
     });
+  }
+
+  async function uploadThisDeviceCompletely() {
+    if (!session || isSyncingRef.current) {
+      return;
+    }
+
+    if (!isBrowserOnline()) {
+      const offlineMessage =
+        "This device is offline. Reconnect before uploading.";
+      setIsOnline(false);
+      setError(offlineMessage);
+      showToast(offlineMessage);
+      return;
+    }
+
+    setIsOnline(true);
+    setError(null);
+    setIsSyncing(true);
+    setIsBlockingSync(true);
+    setSyncMessage("Uploading this device's complete local data...");
+    isSyncingRef.current = true;
+
+    try {
+      const snapshot = await getLocalAppSnapshot();
+      const pushed = await pushSyncSnapshot(session.token, snapshot);
+      await applySyncSnapshot(pushed.snapshot, { mode: "replace" });
+      clearLocalDataDirty();
+      markRevisionApplied(session, pushed.revision);
+      showToast("Uploaded this device and refreshed the local copy.");
+    } catch (uploadError) {
+      const message = (uploadError as Error).message;
+      setError(message);
+      showToast(message);
+    } finally {
+      if (isMountedRef.current) {
+        setIsSyncing(false);
+        setIsBlockingSync(false);
+        setSyncMessage(null);
+      }
+      isSyncingRef.current = false;
+      hasMarkedRemoteDirtyRef.current = false;
+      statsBatchStartedAtRef.current = null;
+    }
+  }
+
+  async function downloadRemoteCompletely() {
+    if (!session || isSyncingRef.current) {
+      return;
+    }
+
+    if (!isBrowserOnline()) {
+      const offlineMessage =
+        "This device is offline. Reconnect before downloading.";
+      setIsOnline(false);
+      setError(offlineMessage);
+      showToast(offlineMessage);
+      return;
+    }
+
+    setIsOnline(true);
+    setError(null);
+    setIsSyncing(true);
+    setIsBlockingSync(true);
+    setSyncMessage("Replacing this device with the server copy...");
+    isSyncingRef.current = true;
+
+    try {
+      const pulled = await pullSyncSnapshot(session.token);
+      if (!pulled.snapshot) {
+        throw new Error("The server does not have a synced copy yet.");
+      }
+
+      await applySyncSnapshot(pulled.snapshot, { mode: "replace" });
+      await acknowledgeSyncRevision(session.token, pulled.revision);
+      clearLocalDataDirty();
+      markRevisionApplied(session, pulled.revision);
+      showToast("Downloaded the server copy to this device.");
+    } catch (downloadError) {
+      const message = (downloadError as Error).message;
+      setError(message);
+      showToast(message);
+    } finally {
+      if (isMountedRef.current) {
+        setIsSyncing(false);
+        setIsBlockingSync(false);
+        setSyncMessage(null);
+      }
+      isSyncingRef.current = false;
+      hasMarkedRemoteDirtyRef.current = false;
+      statsBatchStartedAtRef.current = null;
+    }
+  }
+
+  async function saveStatsDeltaImmediately(
+    stats: VersionedQuizStats["stats"],
+    statKeys: string[],
+  ) {
+    if (!session) {
+      return stats;
+    }
+
+    if (!isBrowserOnline()) {
+      const offlineMessage =
+        "This device is offline. Reconnect before saving progress.";
+      setIsOnline(false);
+      setError(offlineMessage);
+      throw new Error(offlineMessage);
+    }
+
+    if (statKeys.length === 0) {
+      return {};
+    }
+
+    setIsOnline(true);
+    setError(null);
+
+    const changedStats = statKeys.reduce<VersionedQuizStats["stats"]>(
+      (nextStats, key) => {
+        const stat = stats[key];
+        if (stat) {
+          nextStats[key] = stat;
+        }
+        return nextStats;
+      },
+      {},
+    );
+    if (Object.keys(changedStats).length === 0) {
+      return {};
+    }
+
+    const pushed = await pushStatsDelta(session.token, {
+      version: 1,
+      clientMutationId: createClientMutationId(),
+      changedAt: new Date().toISOString(),
+      stats: changedStats,
+    });
+
+    for (const [key, stat] of Object.entries(pushed.stats)) {
+      stats[key] = stat;
+    }
+
+    const success = await writeStats(stats, { markDirty: false });
+    if (!success) {
+      throw new Error("Failed to save server-confirmed stats locally.");
+    }
+
+    clearDirtyStatKeys(pushed.appliedStatKeys);
+    markRevisionApplied(session, pushed.revision);
+
+    return pushed.stats;
   }
 
   useEffect(() => {
@@ -661,6 +799,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         requestTotpEnrollmentLink,
         loginWithTotpCode,
         syncNow,
+        uploadThisDeviceCompletely,
+        downloadRemoteCompletely,
+        saveStatsDeltaImmediately,
         logoutFromSync,
       }}
     >

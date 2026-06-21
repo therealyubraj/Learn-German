@@ -5,6 +5,7 @@ import React, {
   useContext,
   ReactNode,
 } from "react";
+import { useLocation, matchPath } from "react-router-dom";
 import { useSettings } from "./SettingsContext";
 
 type VimMode = "normal" | "insert";
@@ -12,6 +13,7 @@ type VimMode = "normal" | "insert";
 interface VimModeContextType {
   vimMode: VimMode;
   setVimMode: React.Dispatch<React.SetStateAction<VimMode>>;
+  isVimActive: boolean;
 }
 
 const VimModeContext = createContext<VimModeContextType | undefined>(undefined);
@@ -49,6 +51,14 @@ function findVimButton(key: string) {
   });
 }
 
+function isVimEnabledPath(pathname: string) {
+  return (
+    pathname === "/quiz" ||
+    pathname === "/reverse-flashcards" ||
+    Boolean(matchPath("/word-sets/:name/review", pathname))
+  );
+}
+
 export const useVimMode = () => {
   const context = useContext(VimModeContext);
   if (!context) {
@@ -60,9 +70,14 @@ export const useVimMode = () => {
 export const VimModeProvider = ({ children }: { children: ReactNode }) => {
   const [vimMode, setVimMode] = useState<VimMode>("insert");
   const { settings } = useSettings();
+  const location = useLocation();
+  const isVimActive = settings.vim.enabled && isVimEnabledPath(location.pathname);
 
   useEffect(() => {
-    if (!settings.vim.enabled) return;
+    if (!isVimActive) {
+      setVimMode("insert");
+      return;
+    }
 
     const observer = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
@@ -100,10 +115,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       observer.disconnect();
     };
-  }, [settings.vim.enabled]);
+  }, [isVimActive]);
 
   useEffect(() => {
-    if (!settings.vim.enabled) return;
+    if (!isVimActive) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isInsideVimDisabledArea(event.target)) {
@@ -153,10 +168,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [vimMode, settings.vim.enabled]);
+  }, [vimMode, isVimActive]);
 
   useEffect(() => {
-    if (!settings.vim.enabled) return;
+    if (!isVimActive) return;
 
     const handleFocusOut = (event: FocusEvent) => {
       if (isInsideVimDisabledArea(event.target)) {
@@ -182,10 +197,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       document.removeEventListener("focusout", handleFocusOut);
     };
-  }, [settings.vim.enabled]);
+  }, [isVimActive]);
 
   useEffect(() => {
-    if (!settings.vim.enabled) return;
+    if (!isVimActive) return;
 
     const handleFocusIn = (event: FocusEvent) => {
       if (isInsideVimDisabledArea(event.target)) {
@@ -202,10 +217,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       document.removeEventListener("focusin", handleFocusIn);
     };
-  }, [settings.vim.enabled]);
+  }, [isVimActive]);
 
   return (
-    <VimModeContext.Provider value={{ vimMode, setVimMode }}>
+    <VimModeContext.Provider value={{ vimMode, setVimMode, isVimActive }}>
       {children}
     </VimModeContext.Provider>
   );

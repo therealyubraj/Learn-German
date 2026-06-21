@@ -3,8 +3,10 @@ import { Link, useLocation } from "react-router-dom";
 import { useSettings } from "../contexts/SettingsContext";
 import { getCombinedWordLists, writeStats } from "../FS/utils";
 import { quizEngine } from "../quiz/engine";
+import { useSync } from "../sync/SyncContext";
 import { assertSyncMutationAllowed } from "../sync/runtime";
-import { QuizItem } from "../types";
+import { showToast } from "../Toast";
+import { QuizItem, WordStat } from "../types";
 import { getQuizItemKey } from "../utils";
 
 type ReverseFlashcardLoadState = "loading" | "ready" | "empty" | "error";
@@ -36,6 +38,7 @@ function ReverseButtonLabel({
 export function ReverseFlashcards() {
   const location = useLocation();
   const { settings } = useSettings();
+  const { session, saveStatsDeltaImmediately } = useSync();
   const selectedQuizzes = useMemo<string[]>(
     () => location.state?.selectedQuizzes ?? [],
     [location.state],
@@ -52,6 +55,42 @@ export function ReverseFlashcards() {
   const remainingCount = Math.max(knownWords.length - currentIndex, 0);
   const hasSelection = selectedQuizzes.length > 0;
   const showVimBindings = settings.vim.enabled;
+
+  async function persistStatMutation(
+    statKey: string,
+    previousStat: WordStat | null,
+  ) {
+    const stats = quizEngine.getStats();
+
+    try {
+      if (session) {
+        const canonicalStats = await saveStatsDeltaImmediately(stats, [statKey]);
+        if (canonicalStats[statKey]) {
+          stats[statKey] = canonicalStats[statKey];
+        }
+        return true;
+      }
+
+      const success = await writeStats(stats, {
+        dirtyStatKeys: [statKey],
+      });
+      if (!success) {
+        throw new Error("Failed to write stats.");
+      }
+      return true;
+    } catch (error) {
+      if (previousStat) {
+        stats[statKey] = previousStat;
+      } else {
+        delete stats[statKey];
+      }
+
+      const message = (error as Error).message;
+      console.error("Failed to persist reverse flashcard stats.", error);
+      showToast(message);
+      return false;
+    }
+  }
 
   useEffect(() => {
     async function loadKnownWords() {
@@ -120,13 +159,17 @@ export function ReverseFlashcards() {
       return;
     }
 
-    quizEngine.markReverseRecallFailed(currentWord);
-    const success = await writeStats(quizEngine.getStats(), {
-      dirtyStatKeys: [getQuizItemKey(currentWord)],
-    });
+    const currentKey = getQuizItemKey(currentWord);
+    const currentStats = quizEngine.getStats();
+    const previousStat = currentStats[currentKey]
+      ? { ...currentStats[currentKey] }
+      : null;
 
-    if (!success) {
-      console.error("Failed to write stats?");
+    quizEngine.markReverseRecallFailed(currentWord);
+
+    const didPersist = await persistStatMutation(currentKey, previousStat);
+    if (!didPersist) {
+      return;
     }
 
     setForgottenCount((count) => count + 1);

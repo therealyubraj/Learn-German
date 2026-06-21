@@ -3,8 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { useSettings } from "../contexts/SettingsContext";
 import { getStatsForWords, getWordListByName, writeStats } from "../FS/utils";
 import { quizEngine } from "../quiz/engine";
+import { useSync } from "../sync/SyncContext";
 import { assertSyncMutationAllowed } from "../sync/runtime";
-import { QuizItem } from "../types";
+import { showToast } from "../Toast";
+import { QuizItem, WordStat } from "../types";
 import { getQuizItemKey } from "../utils";
 
 type ReviewLoadState = "loading" | "ready" | "empty" | "error";
@@ -36,6 +38,7 @@ function ReviewButtonLabel({
 export function Review() {
   const { name = "" } = useParams();
   const { settings } = useSettings();
+  const { session, saveStatsDeltaImmediately } = useSync();
   const decodedName = useMemo(() => decodeURIComponent(name), [name]);
   const [loadState, setLoadState] = useState<ReviewLoadState>("loading");
   const [reviewWords, setReviewWords] = useState<QuizItem[]>([]);
@@ -45,6 +48,42 @@ export function Review() {
   const currentWord = reviewWords[currentIndex];
   const remainingCount = Math.max(reviewWords.length - currentIndex, 0);
   const showVimBindings = settings.vim.enabled;
+
+  async function persistStatMutation(
+    statKey: string,
+    previousStat: WordStat | null,
+  ) {
+    const stats = quizEngine.getStats();
+
+    try {
+      if (session) {
+        const canonicalStats = await saveStatsDeltaImmediately(stats, [statKey]);
+        if (canonicalStats[statKey]) {
+          stats[statKey] = canonicalStats[statKey];
+        }
+        return true;
+      }
+
+      const success = await writeStats(stats, {
+        dirtyStatKeys: [statKey],
+      });
+      if (!success) {
+        throw new Error("Failed to write stats.");
+      }
+      return true;
+    } catch (error) {
+      if (previousStat) {
+        stats[statKey] = previousStat;
+      } else {
+        delete stats[statKey];
+      }
+
+      const message = (error as Error).message;
+      console.error("Failed to persist review stats.", error);
+      showToast(message);
+      return false;
+    }
+  }
 
   useEffect(() => {
     async function loadReviewWords() {
@@ -91,13 +130,17 @@ export function Review() {
       return;
     }
 
-    quizEngine.updateReviewStats(currentWord, remembered);
-    const success = await writeStats(quizEngine.getStats(), {
-      dirtyStatKeys: [getQuizItemKey(currentWord)],
-    });
+    const currentKey = getQuizItemKey(currentWord);
+    const currentStats = quizEngine.getStats();
+    const previousStat = currentStats[currentKey]
+      ? { ...currentStats[currentKey] }
+      : null;
 
-    if (!success) {
-      console.error("Failed to write stats?");
+    quizEngine.updateReviewStats(currentWord, remembered);
+
+    const didPersist = await persistStatMutation(currentKey, previousStat);
+    if (!didPersist) {
+      return;
     }
 
     const nextIndex = currentIndex + 1;

@@ -94,4 +94,5 @@ export type PushStatsDeltaResponse = {
   ok: true;
   revision: number;
   appliedStatKeys: string[];
+  stats: VersionedQuizStats["stats"];
 };

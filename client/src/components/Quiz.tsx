@@ -7,8 +7,9 @@ import {
   saveEditedWordList,
   writeStats,
 } from "../FS/utils";
-import { QuizItem } from "../types";
+import { QuizItem, WordStat } from "../types";
 import { quizEngine } from "../quiz/engine";
+import { useSync } from "../sync/SyncContext";
 import { assertSyncMutationAllowed } from "../sync/runtime";
 import { showToast } from "../Toast";
 import { EditItemModal } from "./word-set-editor/EditItemModal";
@@ -18,6 +19,7 @@ import { getQuizItemKey } from "../utils";
 
 export function Quiz() {
   const location = useLocation();
+  const { session, saveStatsDeltaImmediately } = useSync();
   const selectedQuizzes = location.state?.selectedQuizzes ?? [];
   const [currentItem, setCurrentItem] = useState<QuizItem>({
     LHS: "",
@@ -47,34 +49,43 @@ export function Quiz() {
     setCurrentItem(quizEngine.selectNextWord(currentItem));
   }
 
-  function onNext(guessedCorrectly: boolean) {
+  async function persistStatMutation(
+    statKey: string,
+    previousStat: WordStat | null,
+  ) {
+    const stats = quizEngine.getStats();
+
     try {
-      assertSyncMutationAllowed();
-    } catch (error) {
-      console.error(error);
-      window.alert((error as Error).message);
-      return;
-    }
-
-    // update the stats of this word in the file
-    quizEngine.updateStats(currentItem, guessedCorrectly);
-
-    // and get a new word and rerender
-    const newItem = quizEngine.selectNextWord(currentItem);
-    setCurrentItem(newItem);
-
-    writeStats(quizEngine.getStats(), {
-      dirtyStatKeys: [getQuizItemKey(currentItem)],
-    })
-      .then((v) => {
-        if (!v) {
-          console.error("Failed to write stats?");
+      if (session) {
+        const canonicalStats = await saveStatsDeltaImmediately(stats, [statKey]);
+        if (canonicalStats[statKey]) {
+          stats[statKey] = canonicalStats[statKey];
         }
-      })
-      .catch((e) => console.error(e));
+        return true;
+      }
+
+      const success = await writeStats(stats, {
+        dirtyStatKeys: [statKey],
+      });
+      if (!success) {
+        throw new Error("Failed to write stats.");
+      }
+      return true;
+    } catch (error) {
+      if (previousStat) {
+        stats[statKey] = previousStat;
+      } else {
+        delete stats[statKey];
+      }
+
+      const message = (error as Error).message;
+      console.error("Failed to persist quiz stats.", error);
+      showToast(message);
+      return false;
+    }
   }
 
-  function onMarkKnown() {
+  async function onNext(guessedCorrectly: boolean) {
     try {
       assertSyncMutationAllowed();
     } catch (error) {
@@ -82,21 +93,48 @@ export function Quiz() {
       window.alert((error as Error).message);
       return;
     }
+
+    const currentKey = getQuizItemKey(currentItem);
+    const currentStats = quizEngine.getStats();
+    const previousStat = currentStats[currentKey]
+      ? { ...currentStats[currentKey] }
+      : null;
+
+    quizEngine.updateStats(currentItem, guessedCorrectly);
+
+    const didPersist = await persistStatMutation(currentKey, previousStat);
+    if (!didPersist) {
+      return;
+    }
+
+    const newItem = quizEngine.selectNextWord(currentItem);
+    setCurrentItem(newItem);
+  }
+
+  async function onMarkKnown() {
+    try {
+      assertSyncMutationAllowed();
+    } catch (error) {
+      console.error(error);
+      window.alert((error as Error).message);
+      return;
+    }
+
+    const currentKey = getQuizItemKey(currentItem);
+    const currentStats = quizEngine.getStats();
+    const previousStat = currentStats[currentKey]
+      ? { ...currentStats[currentKey] }
+      : null;
 
     quizEngine.markKnown(currentItem);
 
+    const didPersist = await persistStatMutation(currentKey, previousStat);
+    if (!didPersist) {
+      return;
+    }
+
     const newItem = quizEngine.selectNextWord(currentItem);
     setCurrentItem(newItem);
-
-    writeStats(quizEngine.getStats(), {
-      dirtyStatKeys: [getQuizItemKey(currentItem)],
-    })
-      .then((v) => {
-        if (!v) {
-          console.error("Failed to write stats?");
-        }
-      })
-      .catch((e) => console.error(e));
   }
 
   async function findCurrentItemWordSet() {

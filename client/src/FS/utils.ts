@@ -666,7 +666,15 @@ export async function getLocalAppSnapshot(): Promise<SyncSnapshot> {
   };
 }
 
-export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
+type ApplySyncSnapshotOptions = {
+  mode?: "merge" | "replace";
+};
+
+export async function applySyncSnapshot(
+  snapshot: SyncSnapshot,
+  options: ApplySyncSnapshotOptions = {},
+): Promise<void> {
+  const mode = options.mode ?? "merge";
   const [localWordLists, localSettingsMeta, localStatsStore] = await Promise.all(
     [getAllStoredWordLists(), readLocalSyncMetadata(), readVersionedQuizStats()],
   );
@@ -692,6 +700,7 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
     );
 
     if (
+      mode === "merge" &&
       localDeletedWordList &&
       getDeletedWordListUpdatedAt(localDeletedWordList) >=
         getWordListUpdatedAt(normalizedIncomingWordList)
@@ -704,6 +713,7 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
     );
 
     if (
+      mode === "replace" ||
       !currentWordList ||
       getWordListUpdatedAt(normalizedIncomingWordList) >
         getWordListUpdatedAt(currentWordList)
@@ -719,10 +729,29 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
     }
   }
 
-  const mergedDeletedWordLists = mergeDeletedWordListTombstones(
-    localSettingsMeta.deletedWordLists,
-    resolvedSnapshotState.deletedWordLists,
-  );
+  if (mode === "replace") {
+    const remoteWordListNames = new Set(
+      resolvedSnapshotState.wordLists.map((wordList) => wordList.metadata.name),
+    );
+
+    for (const currentWordList of Array.from(localWordListsByName.values())) {
+      if (!remoteWordListNames.has(currentWordList.metadata.name)) {
+        await deleteWordListByName(currentWordList.metadata.name, {
+          markDirty: false,
+          updatedAt: snapshot.exportedAt,
+        });
+        localWordListsByName.delete(currentWordList.metadata.name);
+      }
+    }
+  }
+
+  const mergedDeletedWordLists =
+    mode === "replace"
+      ? resolvedSnapshotState.deletedWordLists
+      : mergeDeletedWordListTombstones(
+          localSettingsMeta.deletedWordLists,
+          resolvedSnapshotState.deletedWordLists,
+        );
 
   for (const deletedWordList of mergedDeletedWordLists) {
     const currentWordList = localWordListsByName.get(deletedWordList.name);
@@ -750,13 +779,19 @@ export async function applySyncSnapshot(snapshot: SyncSnapshot): Promise<void> {
     deletedWordLists: resolvedLocalState.deletedWordLists,
   });
 
-  if (snapshot.settingsUpdatedAt > localSettingsMeta.settingsUpdatedAt) {
+  if (
+    mode === "replace" ||
+    snapshot.settingsUpdatedAt > localSettingsMeta.settingsUpdatedAt
+  ) {
     await saveSettings(snapshot.settings, {
       markDirty: false,
       updatedAt: snapshot.settingsUpdatedAt,
     });
   }
 
-  const mergedStats = mergeQuizStats(localStatsStore.stats, snapshot.stats.stats);
-  await writeStats(mergedStats, { markDirty: false });
+  const nextStats =
+    mode === "replace"
+      ? snapshot.stats.stats
+      : mergeQuizStats(localStatsStore.stats, snapshot.stats.stats);
+  await writeStats(nextStats, { markDirty: false });
 }

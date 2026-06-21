@@ -350,10 +350,27 @@ export async function pushStatsDeltaHandler(request: Request, env: Env) {
     ).bind(nextRevision, nextRevision, timestamp, timestamp, session.deviceId),
   ]);
 
+  const statKeyPlaceholders = statEntries.map(() => "?").join(", ");
+  const canonicalStatRows = await env.DB.prepare(
+    `
+      SELECT *
+      FROM user_stat_records
+      WHERE user_id = ? AND stat_key IN (${statKeyPlaceholders})
+    `,
+  )
+    .bind(session.userId, ...statEntries.map(([key]) => key))
+    .all<UserStatRecordRow>();
+
+  const canonicalStats: Record<string, WordStat> = {};
+  for (const row of canonicalStatRows.results ?? []) {
+    canonicalStats[row.stat_key] = recordToWordStat(row);
+  }
+
   return json({
     ok: true,
     revision: nextRevision,
     appliedStatKeys: statEntries.map(([key]) => key),
+    stats: canonicalStats,
   });
 }
 
