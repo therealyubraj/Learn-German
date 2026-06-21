@@ -17,6 +17,13 @@ export type SyncSnapshot = {
   stats: VersionedQuizStats;
 };
 
+export type StatsDelta = {
+  version: 1;
+  clientMutationId: string;
+  changedAt: string;
+  stats: VersionedQuizStats["stats"];
+};
+
 export type SyncDeviceSummary = {
   id: string;
   name: string;
@@ -81,4 +88,10 @@ export type PushSnapshotResponse = {
   ok: true;
   revision: number;
   snapshot: SyncSnapshot;
+};
+
+export type PushStatsDeltaResponse = {
+  ok: true;
+  revision: number;
+  appliedStatKeys: string[];
 };

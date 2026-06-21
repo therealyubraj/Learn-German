@@ -16,6 +16,39 @@ interface VimModeContextType {
 
 const VimModeContext = createContext<VimModeContextType | undefined>(undefined);
 
+function isInsideVimDisabledArea(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    ? Boolean(target.closest('[data-vim-disabled="true"]'))
+    : false;
+}
+
+function isTextInput(element: Element | null): element is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  );
+}
+
+function findVimButton(key: string) {
+  const normalizedKey = key.toLowerCase();
+
+  return Array.from(
+    document.querySelectorAll<HTMLElement>("[data-vim-key]"),
+  ).find((candidate) => {
+    const candidateKey = candidate.dataset.vimKey?.toLowerCase();
+    const isDisabled =
+      candidate instanceof HTMLButtonElement
+        ? candidate.disabled
+        : candidate.getAttribute("aria-disabled") === "true";
+
+    return (
+      candidateKey === normalizedKey &&
+      !isDisabled &&
+      !isInsideVimDisabledArea(candidate)
+    );
+  });
+}
+
 export const useVimMode = () => {
   const context = useContext(VimModeContext);
   if (!context) {
@@ -37,6 +70,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === 1) { // Check if it's an element
               const element = node as HTMLElement;
+              if (isInsideVimDisabledArea(element)) {
+                return;
+              }
+
               let primaryInput: HTMLElement | null = null;
               
               if (element.matches('[data-vim-primary-input="true"]')) {
@@ -69,36 +106,41 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     if (!settings.vim.enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      const activeElement = document.activeElement as HTMLElement;
-      const isInputFocused =
-        activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA";
+      if (isInsideVimDisabledArea(event.target)) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      const isInputFocused = isTextInput(activeElement);
+      const inputCanReceiveText = isInputFocused && !activeElement.disabled;
 
       if (event.key === "Escape") {
         event.preventDefault(); // Prevent any default escape behavior
-        if (isInputFocused) {
+        if (inputCanReceiveText) {
           activeElement.blur();
         }
         setVimMode("normal");
         return;
       }
 
-      if (vimMode === "normal") {
+      const shouldHandleShortcut = vimMode === "normal" || !inputCanReceiveText;
+
+      if (shouldHandleShortcut) {
         if (event.key === "i") {
           event.preventDefault(); // Prevent typing 'i'
-          setVimMode("insert");
           const primaryInput = document.querySelector(
             '[data-vim-primary-input="true"]'
-          ) as HTMLElement;
-          primaryInput?.focus();
+          ) as HTMLInputElement | HTMLTextAreaElement | null;
+
+          if (primaryInput && !primaryInput.disabled) {
+            setVimMode("insert");
+            primaryInput.focus();
+          }
           return;
         }
 
         // Find and click the button corresponding to the pressed key
-        const key = event.key;
-        const button = document.querySelector(
-          `[data-vim-key="${key}"]`
-        ) as HTMLElement;
+        const button = findVimButton(event.key);
 
         if (button) {
           event.preventDefault(); // Prevent any default key behavior
@@ -117,7 +159,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     if (!settings.vim.enabled) return;
 
     const handleFocusOut = (event: FocusEvent) => {
-      const activeElement = document.activeElement as HTMLElement;
+      if (isInsideVimDisabledArea(event.target)) {
+        return;
+      }
+
       // If the primary input lost focus and the new focus target is not
       // an element that should keep us in insert mode (e.g., another VIM-controlled button)
       // For now, simple: if primary input lost focus and it's not the VIM mode indicator
@@ -143,6 +188,10 @@ export const VimModeProvider = ({ children }: { children: ReactNode }) => {
     if (!settings.vim.enabled) return;
 
     const handleFocusIn = (event: FocusEvent) => {
+      if (isInsideVimDisabledArea(event.target)) {
+        return;
+      }
+
       // If the primary input gained focus, switch to insert mode
       if ((event.target as HTMLElement).matches('[data-vim-primary-input="true"]')) {
         setVimMode('insert');

@@ -6,9 +6,13 @@ import { QuizItem } from "../types";
 export function QuizView({
   item,
   onNext,
+  onMarkKnown,
+  onEditCurrent,
 }: {
   item: QuizItem;
   onNext: (guessedCorrectly: boolean) => void;
+  onMarkKnown: () => void;
+  onEditCurrent: () => void;
 }) {
   return (
     <div className="flex min-h-[calc(100vh-5rem)] w-full items-start justify-center px-4 py-6 sm:items-center sm:px-8 sm:py-10">
@@ -22,8 +26,21 @@ export function QuizView({
           </h1>
         </div>
 
-        <div className="w-full rounded-3xl border border-[#30363D] bg-[#161B22] px-5 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:px-[36px] sm:py-[40px]">
-          <QuizControls item={item} onNext={onNext} />
+        <div className="relative w-full rounded-3xl border border-[#30363D] bg-[#161B22] px-5 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:px-[36px] sm:py-[40px]">
+          <button
+            type="button"
+            onClick={onEditCurrent}
+            data-vim-key="e"
+            aria-label="Edit current word"
+            className="absolute right-3 top-3 inline-flex min-h-9 items-center justify-center rounded-xl border border-[#30363D] bg-[#0D1117] px-3 text-xs font-semibold text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C] sm:right-4 sm:top-4"
+          >
+            Edit
+          </button>
+          <QuizControls
+            item={item}
+            onNext={onNext}
+            onMarkKnown={onMarkKnown}
+          />
         </div>
 
         <div className="flex justify-center pt-1 sm:pt-2">

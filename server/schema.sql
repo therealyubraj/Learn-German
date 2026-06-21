@@ -45,6 +45,18 @@ CREATE TABLE IF NOT EXISTS user_snapshots (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS user_stat_records (
+  user_id TEXT NOT NULL,
+  stat_key TEXT NOT NULL,
+  mastery INTEGER NOT NULL,
+  success_count INTEGER NOT NULL,
+  last_reviewed INTEGER NOT NULL,
+  exposure_count INTEGER NOT NULL,
+  revision INTEGER NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, stat_key)
+);
+
 CREATE TABLE IF NOT EXISTS totp_enrollments (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL,

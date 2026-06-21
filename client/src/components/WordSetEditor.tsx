@@ -69,6 +69,19 @@ export function WordSetEditor() {
   }, [wordSetName]);
 
   useEffect(() => {
+    const previousVimDisabled = document.body.getAttribute("data-vim-disabled");
+    document.body.setAttribute("data-vim-disabled", "true");
+
+    return () => {
+      if (previousVimDisabled === null) {
+        document.body.removeAttribute("data-vim-disabled");
+      } else {
+        document.body.setAttribute("data-vim-disabled", previousVimDisabled);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isAddModalOpen && !editingItemId) {
       return;
     }
@@ -377,7 +390,10 @@ export function WordSetEditor() {
 
   return (
     <>
-      <div className="relative mt-[30px] flex min-h-[calc(100vh-5rem)] w-full justify-center overflow-hidden px-6 pb-24 pt-32 sm:px-10 sm:pb-28 sm:pt-36 lg:px-14">
+      <div
+        data-vim-disabled="true"
+        className="relative mt-[30px] flex min-h-[calc(100vh-5rem)] w-full justify-center overflow-hidden px-6 pb-24 pt-32 sm:px-10 sm:pb-28 sm:pt-36 lg:px-14"
+      >
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-24 h-64 w-64 -translate-x-[32rem] rounded-full bg-[#00C896]/10 blur-3xl" />
           <div className="absolute right-0 top-48 h-80 w-80 translate-x-1/4 rounded-full bg-[#1F6FEB]/10 blur-3xl" />

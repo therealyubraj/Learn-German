@@ -66,9 +66,11 @@ function ButtonLabel({
 export function QuizControls({
   item,
   onNext,
+  onMarkKnown,
 }: {
   item: QuizItem;
   onNext: (guessedCorrectly: boolean) => void;
+  onMarkKnown: () => void;
 }) {
   const [controlState, setControlState] = useState<ControlState>("guessing");
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
@@ -176,13 +178,7 @@ export function QuizControls({
 
       <div className="flex flex-col gap-4">
         {controlState === "guessing" ? (
-          <>
-            <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
-              <p className="text-center text-sm font-medium text-[#E6EDF3]">
-                Type the German translation, then check your answer.
-              </p>
-            </div>
-
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
               onMouseDown={(event) => event.preventDefault()}
@@ -196,22 +192,56 @@ export function QuizControls({
                 showVimKey={showVimBindings}
               />
             </button>
-          </>
-        ) : (
-          <>
             <button
-              className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
-              onClick={handleNextQuestion}
+              className={`${buttonStyles.base} ${buttonStyles.secondary} w-full`}
+              onClick={handleGiveUp}
               disabled={isSpeaking}
-              data-vim-key="n"
+              data-vim-key="g"
             >
               <ButtonLabel
-                label="Next question"
-                vimKey="N"
+                label="Give up"
+                vimKey="G"
                 showVimKey={showVimBindings}
-                centered
               />
             </button>
+          </div>
+        ) : (
+          <>
+            <div
+              className={`grid gap-4 ${
+                controlState === "guessedCorrect" ? "sm:grid-cols-2" : ""
+              }`}
+            >
+              <button
+                className={`${buttonStyles.base} ${buttonStyles.primary} w-full`}
+                onClick={handleNextQuestion}
+                disabled={isSpeaking}
+                data-vim-key="n"
+              >
+                <ButtonLabel
+                  label="Next question"
+                  vimKey="N"
+                  showVimKey={showVimBindings}
+                  centered
+                />
+              </button>
+
+              {controlState === "guessedCorrect" ? (
+                <button
+                  className={`${buttonStyles.base} ${buttonStyles.quiet} w-full`}
+                  onClick={onMarkKnown}
+                  disabled={isSpeaking}
+                  data-vim-key="k"
+                >
+                  <ButtonLabel
+                    label="Already know it"
+                    vimKey="K"
+                    showVimKey={showVimBindings}
+                    centered
+                  />
+                </button>
+              ) : null}
+            </div>
 
             <div className="rounded-2xl border border-[#30363D] bg-[#0D1117] px-[18px] py-[14px]">
               <div className="flex flex-col gap-4">
@@ -267,12 +297,8 @@ export function QuizControls({
           </>
         )}
 
-        <div
-          className={`grid gap-4 ${
-            controlState === "guessing" ? "sm:grid-cols-1" : "sm:grid-cols-2"
-          }`}
-        >
-          {controlState !== "guessing" ? (
+        {controlState !== "guessing" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
             <button
               className={`${buttonStyles.base} ${buttonStyles.quiet}`}
               onClick={handlePlaySound}
@@ -285,21 +311,21 @@ export function QuizControls({
                 showVimKey={showVimBindings}
               />
             </button>
-          ) : null}
 
-          <button
-            className={`${buttonStyles.base} ${buttonStyles.secondary}`}
-            onClick={handleGiveUp}
-            disabled={controlState !== "guessing" || isSpeaking}
-            data-vim-key="g"
-          >
-            <ButtonLabel
-              label="Give up"
-              vimKey="G"
-              showVimKey={showVimBindings}
-            />
-          </button>
-        </div>
+            <button
+              className={`${buttonStyles.base} ${buttonStyles.secondary}`}
+              onClick={handleGiveUp}
+              disabled
+              data-vim-key="g"
+            >
+              <ButtonLabel
+                label="Give up"
+                vimKey="G"
+                showVimKey={showVimBindings}
+              />
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

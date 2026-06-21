@@ -4,13 +4,15 @@ import { ItemForm, ModalShell, fieldClassName } from "./shared";
 
 const llmJsonPrompt = `You are preparing quiz items for a German vocabulary app.
 
-Return only valid JSON.
-Return a JSON array of objects.
-Do not include markdown fences.
+Appropriately put words into categories like: Nouns, Verbs, etc. and if I give you my own categories, use that instead.
+And for noun also include the artikel as well.
+For each category output one List if that list contains any word from what I have given.
+
+For each category, return a JSON array of objects.
+
+Each category JSON should be easily copyable separately to paste into the app.
 
 Each object should use this shape:
-Appropriately put words into categories like: Nouns, Verbs, etc. and if I give you my own categories, use that instead.
-For each category output one List if that list contains any word from what I have given.
 
 [
   {
@@ -20,6 +22,23 @@ For each category output one List if that list contains any word from what I hav
     "remarksEN": "English translation of the sample sentence"
   }
 ]
+
+Example:
+Given the words: apfel, tisch, machen, schlafen 
+Nouns
+\`\`\`
+[{
+ ... JSON HERE for apfel, tisch with artikel...
+}]
+\`\`\`
+
+Verbs
+\`\`\`
+[{
+ ... JSON HERE for machen, schlafen...
+}]
+\`\`\`
+
 
 Field rules:
 - LHS is the prompt shown to the learner.

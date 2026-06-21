@@ -1,7 +1,9 @@
 import {
   PullSnapshotResponse,
+  PushStatsDeltaResponse,
   PushSnapshotResponse,
   StartTotpEnrollmentResponse,
+  StatsDelta,
   SyncSnapshot,
   SyncStatusResponse,
   TotpEnrollmentDetailsResponse,
@@ -134,6 +136,14 @@ export function pushSyncSnapshot(token: string, snapshot: SyncSnapshot) {
     method: "POST",
     token,
     body: JSON.stringify({ snapshot }),
+  });
+}
+
+export function pushStatsDelta(token: string, delta: StatsDelta) {
+  return request<PushStatsDeltaResponse>("/sync/push-stats-delta", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ delta }),
   });
 }
 

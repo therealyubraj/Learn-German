@@ -63,6 +63,7 @@ type LocalSyncMetadata = {
 type SaveMutationOptions = {
   markDirty?: boolean;
   updatedAt?: string;
+  dirtyStatKeys?: string[];
 };
 
 type SaveWordListOptions = SaveMutationOptions;
@@ -636,7 +637,7 @@ export async function writeStats(
   );
 
   if (success && (options.markDirty ?? true)) {
-    markLocalDataDirty("stats");
+    markLocalDataDirty("stats", options.dirtyStatKeys);
   }
 
   return success;

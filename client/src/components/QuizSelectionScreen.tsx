@@ -7,8 +7,14 @@ import React, {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { getAllWordListSummaries } from "../FS/utils";
+import {
+  getAllWordListSummaries,
+  getStatsForWords,
+  getWordListByName,
+} from "../FS/utils";
+import { quizEngine } from "../quiz/engine";
 import { WordListSummary } from "../types";
+import { getQuizItemKey } from "../utils";
 
 type QuizButtonProps = {
   children: React.ReactNode;
@@ -21,6 +27,8 @@ type QuizButtonProps = {
 
 type SelectionChipProps = {
   label: string;
+  reviewCount: number;
+  onReview: () => void;
   onEdit: () => void;
   onRemove: () => void;
 };
@@ -28,6 +36,8 @@ type SelectionChipProps = {
 type MultiSelectDropdownProps = {
   options: WordListSummary[];
   selectedNames: string[];
+  reviewCountsByName: Record<string, number>;
+  onReview: (name: string) => void;
   onEdit: (name: string) => void;
   onToggle: (name: string) => void;
   disabled?: boolean;
@@ -64,7 +74,13 @@ function QuizButton({
   );
 }
 
-function SelectionChip({ label, onEdit, onRemove }: SelectionChipProps) {
+function SelectionChip({
+  label,
+  reviewCount,
+  onReview,
+  onEdit,
+  onRemove,
+}: SelectionChipProps) {
   return (
     <motion.span
       layout
@@ -76,6 +92,16 @@ function SelectionChip({ label, onEdit, onRemove }: SelectionChipProps) {
     >
       <span className="truncate">{label}</span>
       <span className="flex shrink-0 items-center gap-2">
+        {reviewCount > 0 ? (
+          <button
+            type="button"
+            onClick={onReview}
+            aria-label={`Review ${reviewCount} due words from ${label}`}
+            className="inline-flex h-7 min-w-[4.6rem] items-center justify-center rounded-full border border-[#F59E0B]/45 bg-[#F59E0B]/12 px-3 text-xs font-medium text-[#FBBF24] transition-colors hover:border-[#F59E0B] hover:bg-[#F59E0B]/20 hover:text-[#FDE68A]"
+          >
+            Review {reviewCount}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onEdit}
@@ -100,6 +126,8 @@ function SelectionChip({ label, onEdit, onRemove }: SelectionChipProps) {
 function MultiSelectDropdown({
   options,
   selectedNames,
+  reviewCountsByName,
+  onReview,
   onEdit,
   onToggle,
   disabled = false,
@@ -256,6 +284,7 @@ function MultiSelectDropdown({
                 <div role="listbox" aria-multiselectable="true">
                   {visibleOptions.map((option, index) => {
                     const isSelected = selectedNames.includes(option.name);
+                    const reviewCount = reviewCountsByName[option.name] ?? 0;
 
                     return (
                       <div
@@ -305,6 +334,17 @@ function MultiSelectDropdown({
                           </div>
                         </button>
 
+                        {reviewCount > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => onReview(option.name)}
+                            aria-label={`Review ${reviewCount} due words from ${option.name}`}
+                            className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-[#F59E0B]/45 bg-[#F59E0B]/12 px-3 text-xs font-semibold text-[#FBBF24] transition-colors hover:border-[#F59E0B] hover:bg-[#F59E0B]/20 hover:text-[#FDE68A]"
+                          >
+                            Review {reviewCount}
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
                           onClick={() => onEdit(option.name)}
@@ -344,6 +384,9 @@ function MultiSelectDropdown({
 
 export function QuizSelectionScreen() {
   const [allSets, setAllSets] = useState<WordListSummary[]>([]);
+  const [reviewCountsByName, setReviewCountsByName] = useState<
+    Record<string, number>
+  >({});
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -357,6 +400,10 @@ export function QuizSelectionScreen() {
       try {
         const nextSets = await getAllWordListSummaries();
         setAllSets(nextSets);
+        void loadReviewCounts(nextSets).catch((reviewCountError) => {
+          console.error("Failed to load review counts.", reviewCountError);
+          setReviewCountsByName({});
+        });
 
         let isFirstOpen = false;
 
@@ -396,6 +443,26 @@ export function QuizSelectionScreen() {
     populateList();
   }, []);
 
+  async function loadReviewCounts(wordSets: WordListSummary[]) {
+    const nextReviewCounts = await wordSets.reduce<
+      Promise<Record<string, number>>
+    >(async (countsPromise, wordSet) => {
+      const counts = await countsPromise;
+      const storedWordList = await getWordListByName(wordSet.name);
+      const stats = await getStatsForWords(storedWordList.list);
+      const now = Date.now();
+
+      counts[wordSet.name] = storedWordList.list.filter((word) => {
+        const stat = stats[getQuizItemKey(word)];
+        return stat ? quizEngine.isDueForReview(stat, now) : false;
+      }).length;
+
+      return counts;
+    }, Promise.resolve({}));
+
+    setReviewCountsByName(nextReviewCounts);
+  }
+
   const selectedSets = useMemo(
     () => allSets.filter((option) => selectedNames.includes(option.name)),
     [allSets, selectedNames],
@@ -421,6 +488,10 @@ export function QuizSelectionScreen() {
     navigate("/quiz", {
       state: { selectedQuizzes: selectedNames },
     });
+  }
+
+  function handleReviewSet(name: string) {
+    navigate(`/word-sets/${encodeURIComponent(name)}/review`);
   }
 
   function handleEditSet(name: string) {
@@ -466,6 +537,8 @@ export function QuizSelectionScreen() {
                   <MultiSelectDropdown
                     options={allSets}
                     selectedNames={selectedNames}
+                    reviewCountsByName={reviewCountsByName}
+                    onReview={handleReviewSet}
                     onEdit={handleEditSet}
                     onToggle={toggleSelection}
                     disabled={isLoading || allSets.length === 0}
@@ -491,6 +564,8 @@ export function QuizSelectionScreen() {
                       <SelectionChip
                         key={option.name}
                         label={option.name}
+                        reviewCount={reviewCountsByName[option.name] ?? 0}
+                        onReview={() => handleReviewSet(option.name)}
                         onEdit={() => handleEditSet(option.name)}
                         onRemove={() => toggleSelection(option.name)}
                       />
@@ -536,7 +611,13 @@ export function QuizSelectionScreen() {
               </QuizButton>
             </motion.div>
 
-            <div className="flex justify-center border-t border-[#30363D] pt-2">
+            <div className="flex flex-col justify-center gap-3 border-t border-[#30363D] pt-2 sm:flex-row">
+              <Link
+                to="/stats"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[14px] text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+              >
+                Stats
+              </Link>
               <Link
                 to="/import"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[14px] text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"

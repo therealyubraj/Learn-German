@@ -16,7 +16,8 @@ class QuizEngine {
   private readonly MASTERY_SUCCESS_THRESHOLD = 3;
   private readonly MIN_EXPOSURES_FOR_MASTERY = 5;
   private readonly RECENT_EXCLUSION_SIZE = 2;
-  private readonly NOVELTY_LEAK_PROBABILITY = 0.15;
+  private readonly NEW_WORD_PROBABILITY = 0.2;
+  private readonly REVIEW_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000;
 
   constructor() {}
 
@@ -35,6 +36,21 @@ class QuizEngine {
 
   public getChecksum() {
     return this.checksum;
+  }
+
+  public isKnown(stat: WordStat) {
+    return (
+      stat.mastery >= this.TARGET_MASTERY &&
+      (stat.exposureCount ?? 0) >= this.MIN_EXPOSURES_FOR_MASTERY
+    );
+  }
+
+  public isDueForReview(stat: WordStat, now = Date.now()) {
+    if (stat.mastery < this.TARGET_MASTERY || stat.lastReviewed <= 0) {
+      return false;
+    }
+
+    return now - stat.lastReviewed >= this.REVIEW_INTERVAL_MS;
   }
 
   // ---- Engine reset on new quiz ----
@@ -62,6 +78,7 @@ class QuizEngine {
   selectNextWord(currentWord?: QuizItem): QuizItem {
     const learning: QuizItem[] = [];
     const dormant: QuizItem[] = [];
+    const newWords: QuizItem[] = [];
     const review: QuizItem[] = [];
 
     for (const word of this.words) {
@@ -70,6 +87,9 @@ class QuizEngine {
 
       if (stat.lastReviewed === 0) {
         dormant.push(word);
+        if ((stat.exposureCount ?? 0) === 0) {
+          newWords.push(word);
+        }
       } else if (
         stat.mastery < this.TARGET_MASTERY ||
         stat.exposureCount < this.MIN_EXPOSURES_FOR_MASTERY
@@ -80,22 +100,42 @@ class QuizEngine {
       }
     }
 
-    // 1. Fill learning set if under capacity
-    if (learning.length < this.MAX_LEARNING_SIZE && dormant.length > 0) {
-      return this.activateDormantWord(dormant);
+    const availableNewWords = this.excludeCurrentWordIfPossible(
+      newWords,
+      currentWord,
+    );
+    const availableDormant = this.excludeCurrentWordIfPossible(
+      dormant,
+      currentWord,
+    );
+    const availableLearning = this.excludeCurrentWordIfPossible(
+      learning,
+      currentWord,
+    );
+    const availableReview = this.excludeCurrentWordIfPossible(
+      review,
+      currentWord,
+    );
+
+    // 1. Occasionally inject a completely new word.
+    if (
+      availableNewWords.length > 0 &&
+      Math.random() < this.NEW_WORD_PROBABILITY
+    ) {
+      return this.activateDormantWord(availableNewWords);
     }
 
-    // 2. Soft novelty leak
+    // 2. If the set has no active words yet, start with a new one.
     if (
-      learning.length >= this.MAX_LEARNING_SIZE &&
-      dormant.length > 0 &&
-      Math.random() < this.NOVELTY_LEAK_PROBABILITY
+      learning.length === 0 &&
+      review.length === 0 &&
+      availableDormant.length > 0
     ) {
-      return this.activateDormantWord(dormant);
+      return this.activateDormantWord(availableDormant);
     }
 
     // 3. Fair rotation among learning words
-    const eligible = learning.filter((word) => {
+    const eligible = availableLearning.filter((word) => {
       const key = getQuizItemKey(word);
       return !this.recentlyShownKeys.includes(key);
     });
@@ -103,20 +143,9 @@ class QuizEngine {
     let pool =
       eligible.length > 0
         ? eligible
-        : learning.length > 0
-          ? learning
-          : this.getReviewPool(review);
-
-    if (currentWord) {
-      const currentKey = getQuizItemKey(currentWord);
-      const withoutCurrentWord = pool.filter(
-        (word) => getQuizItemKey(word) !== currentKey
-      );
-
-      if (withoutCurrentWord.length > 0) {
-        pool = withoutCurrentWord;
-      }
-    }
+        : availableLearning.length > 0
+          ? availableLearning
+          : this.getReviewPool(availableReview);
 
     pool.sort((a, b) => {
       const sa = this.stats[getQuizItemKey(a)];
@@ -147,10 +176,22 @@ class QuizEngine {
     const stat = this.stats[key];
     if (!stat) return;
 
-    stat.exposureCount = (stat.exposureCount ?? 0) + 1;
+    const previousExposureCount = stat.exposureCount ?? 0;
+
+    stat.exposureCount = previousExposureCount + 1;
     stat.lastReviewed = Date.now();
 
     if (guessedCorrectly) {
+      if (previousExposureCount === 0) {
+        stat.mastery = Math.max(stat.mastery, this.TARGET_MASTERY);
+        stat.exposureCount = Math.max(
+          stat.exposureCount,
+          this.MIN_EXPOSURES_FOR_MASTERY
+        );
+        stat.successCount = 0;
+        return;
+      }
+
       stat.successCount++;
       if (stat.successCount >= this.MASTERY_SUCCESS_THRESHOLD) {
         stat.mastery++;
@@ -162,7 +203,56 @@ class QuizEngine {
     }
   }
 
+  markKnown(word: QuizItem) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+    if (!stat) return;
+
+    stat.exposureCount = Math.max(
+      stat.exposureCount ?? 0,
+      this.MIN_EXPOSURES_FOR_MASTERY
+    );
+    stat.lastReviewed = Date.now();
+    stat.mastery = Math.max(stat.mastery, this.TARGET_MASTERY);
+    stat.successCount = 0;
+  }
+
+  updateReviewStats(word: QuizItem, remembered: boolean) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+    if (!stat) return;
+
+    stat.exposureCount = Math.max(
+      stat.exposureCount ?? 0,
+      this.MIN_EXPOSURES_FOR_MASTERY
+    );
+    stat.lastReviewed = Date.now();
+    stat.successCount = 0;
+
+    if (remembered) {
+      stat.mastery = Math.max(stat.mastery + 1, this.TARGET_MASTERY);
+    } else {
+      stat.mastery = Math.max(1, stat.mastery - 2);
+    }
+  }
+
   // ---- Helpers ----
+  private excludeCurrentWordIfPossible(
+    pool: QuizItem[],
+    currentWord?: QuizItem,
+  ) {
+    if (!currentWord || pool.length <= 1) {
+      return pool;
+    }
+
+    const currentKey = getQuizItemKey(currentWord);
+    const withoutCurrentWord = pool.filter(
+      (word) => getQuizItemKey(word) !== currentKey,
+    );
+
+    return withoutCurrentWord.length > 0 ? withoutCurrentWord : pool;
+  }
+
   private activateDormantWord(dormant: QuizItem[]): QuizItem {
     const word = dormant[Math.floor(Math.random() * dormant.length)];
     const key = getQuizItemKey(word);

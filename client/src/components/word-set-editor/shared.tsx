@@ -109,31 +109,32 @@ export function ModalShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#020409]/84 px-6 py-8 backdrop-blur-sm sm:px-10 sm:py-12"
+      data-vim-disabled="true"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#020409]/84 px-3 py-3 backdrop-blur-sm sm:px-10 sm:py-12"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[min(52rem,calc(100vh-5rem))] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-[#30363D] bg-[#161B22] shadow-[0_24px_80px_rgba(0,0,0,0.52)]"
+        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] shadow-[0_24px_80px_rgba(0,0,0,0.52)] sm:max-h-[min(52rem,calc(100vh-5rem))] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#30363D] px-7 py-7 sm:px-10">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#E6EDF3]">
+        <div className="flex items-start justify-between gap-3 border-b border-[#30363D] px-4 py-4 sm:gap-4 sm:px-10 sm:py-7">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold text-[#E6EDF3] sm:text-2xl">
               {title}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[#8B949E]">
+            <p className="mt-1 text-sm leading-6 text-[#8B949E] sm:mt-2">
               {description}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-[#30363D] bg-[#0D1117] px-4 text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+            className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-2xl border border-[#30363D] bg-[#0D1117] px-3 text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C] sm:min-h-11 sm:min-w-11 sm:px-4"
           >
             Close
           </button>
         </div>
-        <div className="quiz-selection-scroll overflow-y-auto px-7 py-7 sm:px-10 sm:py-10">
+        <div className="quiz-selection-scroll overflow-y-auto px-4 py-5 sm:px-10 sm:py-10">
           {children}
         </div>
       </div>

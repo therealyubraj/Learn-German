@@ -63,6 +63,13 @@ export type SyncSnapshot = {
   };
 };
 
+export type StatsDelta = {
+  version: number;
+  clientMutationId?: string;
+  changedAt?: string;
+  stats: Record<string, Partial<WordStat>>;
+};
+
 export type LegacyQuizStatsStoreV1 = {
   version: 1;
   statsByChecksum: Record<string, Record<string, Partial<WordStat>>>;
@@ -80,6 +87,17 @@ export type DeviceRow = {
   last_applied_revision: number;
   has_unpushed_changes: number;
   created_at: string;
+  updated_at: string;
+};
+
+export type UserStatRecordRow = {
+  user_id: string;
+  stat_key: string;
+  mastery: number;
+  success_count: number;
+  last_reviewed: number;
+  exposure_count: number;
+  revision: number;
   updated_at: string;
 };
 

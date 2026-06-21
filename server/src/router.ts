@@ -11,6 +11,7 @@ import {
   markDirtyHandler,
   pullHandler,
   pushHandler,
+  pushStatsDeltaHandler,
   statusHandler,
 } from "./handlers/sync";
 import { notFound } from "./lib/http";
@@ -66,6 +67,13 @@ export async function route(request: Request, env: Env) {
 
   if (url.pathname === "/api/sync/push" && request.method === "POST") {
     return pushHandler(request, env);
+  }
+
+  if (
+    url.pathname === "/api/sync/push-stats-delta" &&
+    request.method === "POST"
+  ) {
+    return pushStatsDeltaHandler(request, env);
   }
 
   if (url.pathname === "/api/sync/pull" && request.method === "GET") {
