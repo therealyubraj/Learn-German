@@ -6,6 +6,7 @@ import { Navbar } from "./components/Navbar";
 import { Quiz } from "./components/Quiz";
 import { QuizSelectionScreen } from "./components/QuizSelectionScreen";
 import { Review } from "./components/Review";
+import { ReverseFlashcards } from "./components/ReverseFlashcards";
 import { Settings } from "./components/Settings";
 import { SyncPage } from "./components/sync/SyncPage";
 import { TotpEnrollmentPage } from "./components/sync/TotpEnrollmentPage";
@@ -53,6 +54,7 @@ function App() {
                   <Route path="/word-sets/:name/review" element={<Review />} />
                   <Route path="/stats" element={<WordSetStats />} />
                   <Route path="/quiz" element={<Quiz />} />
+                  <Route path="/reverse-flashcards" element={<ReverseFlashcards />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/sync" element={<SyncPage />} />
                   <Route path="/totp-enroll" element={<TotpEnrollmentPage />} />

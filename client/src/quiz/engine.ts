@@ -236,6 +236,23 @@ class QuizEngine {
     }
   }
 
+  markReverseRecallFailed(word: QuizItem) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+    if (!stat) return;
+
+    stat.exposureCount = Math.max(
+      stat.exposureCount ?? 0,
+      this.MIN_EXPOSURES_FOR_MASTERY
+    );
+    stat.lastReviewed = Date.now();
+    stat.mastery = Math.max(
+      1,
+      Math.min(stat.mastery, this.TARGET_MASTERY - 1)
+    );
+    stat.successCount = this.MASTERY_SUCCESS_THRESHOLD - 1;
+  }
+
   // ---- Helpers ----
   private excludeCurrentWordIfPossible(
     pool: QuizItem[],

@@ -39,6 +39,10 @@ Use this file to preserve the collaboration style that worked well during UI ref
 
 ## Verification
 
-- Run screenshots for UI changes when the user asks or when visual correctness matters.
-- Run `pnpm run build` after TypeScript/React changes when practical.
-- Report exactly what was verified and what was not.
+- Do not run commands for verification in this repo. This includes screenshots,
+  dev servers, builds, tests, local D1 applies, deploy scripts, package scripts,
+  and similar commands such as `pnpm run dev`, `pnpm run dev:client`,
+  `pnpm run dev:server`, and `pnpm run d1:apply:development`.
+- When verification is needed, ask the user to run the relevant command and
+  share the result.
+- Report exactly what was verified by the user and what was not.

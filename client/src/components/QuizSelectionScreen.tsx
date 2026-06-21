@@ -490,6 +490,12 @@ export function QuizSelectionScreen() {
     });
   }
 
+  function handleReverseFlashcardsStart() {
+    navigate("/reverse-flashcards", {
+      state: { selectedQuizzes: selectedNames },
+    });
+  }
+
   function handleReviewSet(name: string) {
     navigate(`/word-sets/${encodeURIComponent(name)}/review`);
   }
@@ -601,6 +607,7 @@ export function QuizSelectionScreen() {
                 opacity: isReady ? 1 : 0.92,
               }}
               transition={{ duration: 0.18, ease: "easeOut" }}
+              className="flex flex-col gap-3"
             >
               <QuizButton
                 disabled={!isReady}
@@ -608,6 +615,14 @@ export function QuizSelectionScreen() {
                 className="w-full"
               >
                 Start Quiz
+              </QuizButton>
+              <QuizButton
+                disabled={!isReady}
+                onClick={handleReverseFlashcardsStart}
+                variant="secondary"
+                className="w-full"
+              >
+                Reverse Flashcards
               </QuizButton>
             </motion.div>
 

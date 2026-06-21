@@ -14,6 +14,12 @@ This file captures repo-specific working context so future work does not have to
 - Local dev uses `localhost` consistently.
 - Client dev URL: `http://localhost:5173`
 - Worker dev URL: `http://localhost:8787`
+- Do not run local commands in this repo. This includes dev servers, builds,
+  tests, local D1 schema applies, deploy scripts, package scripts, and similar
+  commands such as `pnpm run dev`, `pnpm run dev:client`,
+  `pnpm run dev:server`, and `pnpm run d1:apply:development`.
+- If command execution is needed for verification or development, ask the user
+  to run the command and share the result.
 
 ### Commands
 
