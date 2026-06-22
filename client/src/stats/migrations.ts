@@ -27,10 +27,16 @@ export type QuizStatsMigrationStep = {
 };
 
 function normalizeWordStat(stat: Partial<WordStat> | undefined): WordStat {
+  const hasReverseReviewedAt =
+    !!stat && Object.prototype.hasOwnProperty.call(stat, "reverseReviewedAt");
+
   return {
     mastery: stat?.mastery ?? 1,
     successCount: stat?.successCount ?? 0,
     lastReviewed: stat?.lastReviewed ?? 0,
+    reverseReviewedAt: hasReverseReviewedAt
+      ? stat?.reverseReviewedAt ?? 0
+      : stat?.lastReviewed ?? 0,
     exposureCount: stat?.exposureCount ?? 0,
   };
 }
@@ -46,6 +52,10 @@ function mergeWordStat(
     mastery: Math.max(nextCurrent.mastery, nextIncoming.mastery),
     successCount: Math.max(nextCurrent.successCount, nextIncoming.successCount),
     lastReviewed: Math.max(nextCurrent.lastReviewed, nextIncoming.lastReviewed),
+    reverseReviewedAt: Math.max(
+      nextCurrent.reverseReviewedAt,
+      nextIncoming.reverseReviewedAt,
+    ),
     exposureCount: Math.max(
       nextCurrent.exposureCount,
       nextIncoming.exposureCount,

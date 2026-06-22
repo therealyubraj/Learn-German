@@ -15,9 +15,9 @@ This file captures repo-specific working context so future work does not have to
 - Client dev URL: `http://localhost:5173`
 - Worker dev URL: `http://localhost:8787`
 - Do not run local commands in this repo. This includes dev servers, builds,
-  tests, local D1 schema applies, deploy scripts, package scripts, and similar
+  tests, local D1 migrations, deploy scripts, package scripts, and similar
   commands such as `pnpm run dev`, `pnpm run dev:client`,
-  `pnpm run dev:server`, and `pnpm run d1:apply:development`.
+  `pnpm run dev:server`, and `pnpm run d1:migrate:development`.
 - If command execution is needed for verification or development, ask the user
   to run the command and share the result.
 
@@ -26,7 +26,7 @@ This file captures repo-specific working context so future work does not have to
 - Start both: `pnpm run dev`
 - Start client only: `pnpm run dev:client`
 - Start server only: `pnpm run dev:server`
-- Apply local D1 schema: `pnpm run d1:apply:development`
+- Apply local D1 migrations: `pnpm run d1:migrate:development`
 
 ### Client
 
@@ -40,12 +40,12 @@ This file captures repo-specific working context so future work does not have to
 - Local Worker env file: `server/.env`
 - `server/.env` is the source of truth for local Worker env vars.
 - `server/package.json` uses `wrangler dev --local --config ./wrangler.dev.jsonc`
-- Local D1 apply must use the same dev config so schema and runtime point at the same local DB.
+- Local D1 migrations must use the same dev config so schema and runtime point at the same local DB.
 
 ## Production Workflow
 
 - Production-only scripts live in `scripts/`.
-- Production D1 apply: `bash ./scripts/d1-apply-production.sh`
+- Production D1 migrations: `bash ./scripts/d1-migrate-production.sh`
 - Production Worker deploy: `bash ./scripts/deploy-worker-production.sh`
 - Shared production patch logic: `scripts/_production-common.sh`
 - Old merged `worker.sh` flow was removed on purpose.
@@ -89,7 +89,7 @@ This file captures repo-specific working context so future work does not have to
 - Schema adds a unique index on `totp_enrollments.email`.
 - Setup creation uses `ON CONFLICT(email) DO UPDATE`.
 - Active pending enrollment requests for the same email are rejected instead of creating multiple valid attempts.
-- If schema behavior looks wrong in local/prod, re-run the appropriate D1 apply command.
+- If schema behavior looks wrong in local/prod, re-run the appropriate D1 migration command.
 
 ## Sync UI
 

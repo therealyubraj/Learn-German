@@ -7,10 +7,16 @@ import {
 import { nowIso } from "./time";
 
 export function normalizeWordStat(stat: Partial<WordStat> | undefined): WordStat {
+  const hasReverseReviewedAt =
+    !!stat && Object.prototype.hasOwnProperty.call(stat, "reverseReviewedAt");
+
   return {
     mastery: stat?.mastery ?? 1,
     successCount: stat?.successCount ?? 0,
     lastReviewed: stat?.lastReviewed ?? 0,
+    reverseReviewedAt: hasReverseReviewedAt
+      ? stat?.reverseReviewedAt ?? 0
+      : stat?.lastReviewed ?? 0,
     exposureCount: stat?.exposureCount ?? 0,
   };
 }
@@ -25,13 +31,19 @@ function mergeLegacyChecksumStats(
       const existing = normalizeWordStat(merged[key]);
       const incoming = normalizeWordStat(stat);
 
+      const reverseReviewedAt = Math.max(
+        existing.reverseReviewedAt,
+        incoming.reverseReviewedAt,
+      );
+
       merged[key] =
         incoming.lastReviewed > existing.lastReviewed
-          ? incoming
+          ? { ...incoming, reverseReviewedAt }
           : {
               mastery: Math.max(existing.mastery, incoming.mastery),
               successCount: Math.max(existing.successCount, incoming.successCount),
               lastReviewed: Math.max(existing.lastReviewed, incoming.lastReviewed),
+              reverseReviewedAt,
               exposureCount: Math.max(
                 existing.exposureCount,
                 incoming.exposureCount,
@@ -258,12 +270,24 @@ export function mergeQuizStats(
     const nextIncomingStat = normalizeWordStat(incomingStat);
 
     if (nextIncomingStat.lastReviewed > existingStat.lastReviewed) {
-      merged[key] = nextIncomingStat;
+      merged[key] = {
+        ...nextIncomingStat,
+        reverseReviewedAt: Math.max(
+          existingStat.reverseReviewedAt,
+          nextIncomingStat.reverseReviewedAt,
+        ),
+      };
       continue;
     }
 
     if (existingStat.lastReviewed > nextIncomingStat.lastReviewed) {
-      merged[key] = existingStat;
+      merged[key] = {
+        ...existingStat,
+        reverseReviewedAt: Math.max(
+          existingStat.reverseReviewedAt,
+          nextIncomingStat.reverseReviewedAt,
+        ),
+      };
       continue;
     }
 
@@ -276,6 +300,10 @@ export function mergeQuizStats(
       lastReviewed: Math.max(
         existingStat.lastReviewed,
         nextIncomingStat.lastReviewed,
+      ),
+      reverseReviewedAt: Math.max(
+        existingStat.reverseReviewedAt,
+        nextIncomingStat.reverseReviewedAt,
       ),
       exposureCount: Math.max(
         existingStat.exposureCount,

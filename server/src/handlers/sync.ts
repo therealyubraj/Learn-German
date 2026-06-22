@@ -21,6 +21,7 @@ function recordToWordStat(row: UserStatRecordRow): WordStat {
     mastery: row.mastery,
     successCount: row.success_count,
     lastReviewed: row.last_reviewed,
+    reverseReviewedAt: row.reverse_reviewed_at ?? row.last_reviewed,
     exposureCount: row.exposure_count,
   };
 }
@@ -297,11 +298,12 @@ export async function pushStatsDeltaHandler(request: Request, env: Env) {
             mastery,
             success_count,
             last_reviewed,
+            reverse_reviewed_at,
             exposure_count,
             revision,
             updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(user_id, stat_key) DO UPDATE SET
             mastery = CASE
               WHEN excluded.last_reviewed > user_stat_records.last_reviewed THEN excluded.mastery
@@ -314,6 +316,7 @@ export async function pushStatsDeltaHandler(request: Request, env: Env) {
               ELSE max(user_stat_records.success_count, excluded.success_count)
             END,
             last_reviewed = max(user_stat_records.last_reviewed, excluded.last_reviewed),
+            reverse_reviewed_at = max(user_stat_records.reverse_reviewed_at, excluded.reverse_reviewed_at),
             exposure_count = CASE
               WHEN excluded.last_reviewed > user_stat_records.last_reviewed THEN excluded.exposure_count
               WHEN excluded.last_reviewed < user_stat_records.last_reviewed THEN user_stat_records.exposure_count
@@ -328,6 +331,7 @@ export async function pushStatsDeltaHandler(request: Request, env: Env) {
         stat.mastery,
         stat.successCount,
         stat.lastReviewed,
+        stat.reverseReviewedAt,
         stat.exposureCount,
         nextRevision,
         timestamp,

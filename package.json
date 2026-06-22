@@ -6,8 +6,8 @@
     "dev": "pnpm -r --parallel --filter ./server --filter ./client dev",
     "dev:client": "pnpm --dir ./client dev",
     "dev:server": "pnpm --dir ./server dev",
-    "d1:apply:development": "pnpm --dir ./server d1:apply:development",
-    "d1:apply:PRODUCTION": "bash ./scripts/d1-apply-production.sh",
+    "d1:migrate:development": "bash ./scripts/d1-migrate-development.sh",
+    "d1:migrate:PRODUCTION": "bash ./scripts/d1-migrate-production.sh",
     "deploy:worker:PRODUCTION": "bash ./scripts/deploy-worker-production.sh"
   },
   "packageManager": "pnpm@10.13.1+sha1.aa8c167c4509c97519542ef77a09e4b8ab59fb6a"

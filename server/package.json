@@ -3,8 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --local --config ./wrangler.dev.jsonc",
-    "d1:apply:development": "wrangler d1 execute learn-german-sync-development --config ./wrangler.dev.jsonc --local --file=./schema.sql"
+    "dev": "wrangler dev --local --config ./wrangler.dev.jsonc"
   },
   "dependencies": {},
   "devDependencies": {

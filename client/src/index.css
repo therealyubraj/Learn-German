@@ -146,6 +146,24 @@ Retrieved 2025-11-23, License - CC BY-SA 4.0
     margin: 0;
   }
 
+  .flashcard-clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .flashcard-clamp-1 {
+    -webkit-line-clamp: 1;
+  }
+
+  .flashcard-clamp-2 {
+    -webkit-line-clamp: 2;
+  }
+
+  .flashcard-clamp-3 {
+    -webkit-line-clamp: 3;
+  }
+
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;

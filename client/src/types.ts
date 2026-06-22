@@ -44,6 +44,7 @@ export type WordStat = {
   mastery: number;
   successCount: number;
   lastReviewed: number;
+  reverseReviewedAt: number;
   exposureCount: number;
 };
 

@@ -129,6 +129,10 @@ export function QuizControls({
   };
 
   const handleNextQuestion = () => {
+    console.log("[quiz-controls] next question clicked", {
+      key: `${item.LHS}-${item.RHS}`,
+      controlState,
+    });
     onNext(controlState === "guessedCorrect");
   };
 

@@ -56,11 +56,20 @@ export function Quiz() {
     const stats = quizEngine.getStats();
 
     try {
+      console.log("[quiz] persisting stat mutation", {
+        statKey,
+        hasSession: Boolean(session),
+      });
+
       if (session) {
         const canonicalStats = await saveStatsDeltaImmediately(stats, [statKey]);
         if (canonicalStats[statKey]) {
           stats[statKey] = canonicalStats[statKey];
         }
+        console.log("[quiz] persisted stat mutation through sync", {
+          statKey,
+          receivedCanonicalStat: Boolean(canonicalStats[statKey]),
+        });
         return true;
       }
 
@@ -70,6 +79,7 @@ export function Quiz() {
       if (!success) {
         throw new Error("Failed to write stats.");
       }
+      console.log("[quiz] persisted stat mutation locally", { statKey });
       return true;
     } catch (error) {
       if (previousStat) {
@@ -86,6 +96,12 @@ export function Quiz() {
   }
 
   async function onNext(guessedCorrectly: boolean) {
+    const currentKey = getQuizItemKey(currentItem);
+    console.log("[quiz] onNext started", {
+      currentKey,
+      guessedCorrectly,
+    });
+
     try {
       assertSyncMutationAllowed();
     } catch (error) {
@@ -94,7 +110,6 @@ export function Quiz() {
       return;
     }
 
-    const currentKey = getQuizItemKey(currentItem);
     const currentStats = quizEngine.getStats();
     const previousStat = currentStats[currentKey]
       ? { ...currentStats[currentKey] }
@@ -104,10 +119,18 @@ export function Quiz() {
 
     const didPersist = await persistStatMutation(currentKey, previousStat);
     if (!didPersist) {
+      console.warn("[quiz] onNext stopped because stat persistence failed", {
+        currentKey,
+      });
       return;
     }
 
     const newItem = quizEngine.selectNextWord(currentItem);
+    console.log("[quiz] onNext selected item", {
+      previousKey: currentKey,
+      nextKey: getQuizItemKey(newItem),
+      isSameWord: getQuizItemKey(newItem) === currentKey,
+    });
     setCurrentItem(newItem);
   }
 

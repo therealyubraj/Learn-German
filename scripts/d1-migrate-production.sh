@@ -9,8 +9,8 @@ source "${SCRIPT_DIR}/_production-common.sh"
 prepare_production_wrangler
 trap restore_wrangler EXIT INT TERM
 
-pnpm --dir "${SERVER_DIR}" exec wrangler d1 execute learn-german-sync \
-  --config ../wrangler.jsonc \
-  --env production \
-  --remote \
-  --file=./schema.sql
+D1_DATABASE_NAME="learn-german-sync" \
+D1_WRANGLER_CONFIG="../wrangler.jsonc" \
+D1_WRANGLER_ENV="production" \
+D1_REMOTE="true" \
+node "${SCRIPT_DIR}/d1-migrate.mjs"

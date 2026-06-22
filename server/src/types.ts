@@ -31,6 +31,7 @@ export type WordStat = {
   mastery: number;
   successCount: number;
   lastReviewed: number;
+  reverseReviewedAt: number;
   exposureCount: number;
 };
 
@@ -96,6 +97,7 @@ export type UserStatRecordRow = {
   mastery: number;
   success_count: number;
   last_reviewed: number;
+  reverse_reviewed_at: number;
   exposure_count: number;
   revision: number;
   updated_at: string;

@@ -4,10 +4,16 @@ import { DeletedWordListTombstone, SyncSnapshot } from "./types";
 export const DEFAULT_SYNC_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
 function normalizeWordStat(stat: Partial<WordStat> | undefined): WordStat {
+  const hasReverseReviewedAt =
+    !!stat && Object.prototype.hasOwnProperty.call(stat, "reverseReviewedAt");
+
   return {
     mastery: stat?.mastery ?? 1,
     successCount: stat?.successCount ?? 0,
     lastReviewed: stat?.lastReviewed ?? 0,
+    reverseReviewedAt: hasReverseReviewedAt
+      ? stat?.reverseReviewedAt ?? 0
+      : stat?.lastReviewed ?? 0,
     exposureCount: stat?.exposureCount ?? 0,
   };
 }
@@ -27,17 +33,33 @@ function mergeWordStat(current: WordStat | undefined, incoming: WordStat | undef
   const nextIncoming = normalizeWordStat(incoming);
 
   if (nextIncoming.lastReviewed > nextCurrent.lastReviewed) {
-    return nextIncoming;
+    return {
+      ...nextIncoming,
+      reverseReviewedAt: Math.max(
+        nextCurrent.reverseReviewedAt,
+        nextIncoming.reverseReviewedAt,
+      ),
+    };
   }
 
   if (nextCurrent.lastReviewed > nextIncoming.lastReviewed) {
-    return nextCurrent;
+    return {
+      ...nextCurrent,
+      reverseReviewedAt: Math.max(
+        nextCurrent.reverseReviewedAt,
+        nextIncoming.reverseReviewedAt,
+      ),
+    };
   }
 
   return {
     mastery: Math.max(nextCurrent.mastery, nextIncoming.mastery),
     successCount: Math.max(nextCurrent.successCount, nextIncoming.successCount),
     lastReviewed: Math.max(nextCurrent.lastReviewed, nextIncoming.lastReviewed),
+    reverseReviewedAt: Math.max(
+      nextCurrent.reverseReviewedAt,
+      nextIncoming.reverseReviewedAt,
+    ),
     exposureCount: Math.max(
       nextCurrent.exposureCount,
       nextIncoming.exposureCount,

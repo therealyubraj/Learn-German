@@ -18,6 +18,7 @@ class QuizEngine {
   private readonly RECENT_EXCLUSION_SIZE = 2;
   private readonly NEW_WORD_PROBABILITY = 0.2;
   private readonly REVIEW_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000;
+  private readonly REVERSE_FORGOT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
   constructor() {}
 
@@ -25,6 +26,7 @@ class QuizEngine {
     return {
       exposureCount: 0,
       lastReviewed: 0,
+      reverseReviewedAt: 0,
       mastery: 1,
       successCount: 0,
     };
@@ -71,15 +73,21 @@ class QuizEngine {
       if (stat.exposureCount === undefined) {
         stat.exposureCount = 0;
       }
+      if (stat.reverseReviewedAt === undefined) {
+        stat.reverseReviewedAt = stat.lastReviewed ?? 0;
+      }
     }
   }
 
   // ---- Selection ----
   selectNextWord(currentWord?: QuizItem): QuizItem {
+    const currentKey = currentWord ? getQuizItemKey(currentWord) : null;
     const learning: QuizItem[] = [];
     const dormant: QuizItem[] = [];
     const newWords: QuizItem[] = [];
     const review: QuizItem[] = [];
+    const reverseForgottenReady: QuizItem[] = [];
+    const now = Date.now();
 
     for (const word of this.words) {
       const stat = this.stats[getQuizItemKey(word)];
@@ -90,6 +98,10 @@ class QuizEngine {
         if ((stat.exposureCount ?? 0) === 0) {
           newWords.push(word);
         }
+      } else if (this.isReverseForgottenReady(stat, now)) {
+        reverseForgottenReady.push(word);
+      } else if (this.isReverseForgottenCoolingDown(stat, now)) {
+        continue;
       } else if (
         stat.mastery < this.TARGET_MASTERY ||
         stat.exposureCount < this.MIN_EXPOSURES_FOR_MASTERY
@@ -116,6 +128,27 @@ class QuizEngine {
       review,
       currentWord,
     );
+    const availableReverseForgottenReady = this.excludeCurrentWordIfPossible(
+      reverseForgottenReady,
+      currentWord,
+    );
+
+    if (availableReverseForgottenReady.length > 0) {
+      availableReverseForgottenReady.sort((a, b) => {
+        const sa = this.stats[getQuizItemKey(a)];
+        const sb = this.stats[getQuizItemKey(b)];
+        return sa.reverseReviewedAt - sb.reverseReviewedAt;
+      });
+
+      const chosen = availableReverseForgottenReady[0];
+      console.log("[quiz-engine] selected reverse-forgotten word", {
+        previousKey: currentKey,
+        nextKey: getQuizItemKey(chosen),
+        reverseForgottenReady: reverseForgottenReady.length,
+      });
+      this.recordShown(chosen);
+      return chosen;
+    }
 
     // 1. Occasionally inject a completely new word.
     if (
@@ -163,6 +196,31 @@ class QuizEngine {
     const chosen = pool[0];
     if (!chosen) {
       throw new Error("Quiz engine could not select a next word.");
+    }
+
+    const chosenKey = getQuizItemKey(chosen);
+    if (currentKey && chosenKey === currentKey) {
+      console.warn("[quiz-engine] selected same word twice", {
+        key: chosenKey,
+        poolSize: pool.length,
+        learning: learning.length,
+        dormant: dormant.length,
+        newWords: newWords.length,
+        review: review.length,
+        reverseForgottenReady: reverseForgottenReady.length,
+        recentlyShownKeys: [...this.recentlyShownKeys],
+      });
+    } else {
+      console.log("[quiz-engine] selected next word", {
+        previousKey: currentKey,
+        nextKey: chosenKey,
+        poolSize: pool.length,
+        learning: learning.length,
+        dormant: dormant.length,
+        newWords: newWords.length,
+        review: review.length,
+        reverseForgottenReady: reverseForgottenReady.length,
+      });
     }
 
     this.recordShown(chosen);
@@ -245,7 +303,7 @@ class QuizEngine {
       stat.exposureCount ?? 0,
       this.MIN_EXPOSURES_FOR_MASTERY
     );
-    stat.lastReviewed = Date.now();
+    stat.reverseReviewedAt = Date.now();
     stat.mastery = Math.max(
       1,
       Math.min(stat.mastery, this.TARGET_MASTERY - 1)
@@ -253,7 +311,37 @@ class QuizEngine {
     stat.successCount = this.MASTERY_SUCCESS_THRESHOLD - 1;
   }
 
+  markReverseRecallSucceeded(word: QuizItem) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+    if (!stat) return;
+
+    stat.exposureCount = Math.max(
+      stat.exposureCount ?? 0,
+      this.MIN_EXPOSURES_FOR_MASTERY
+    );
+    stat.reverseReviewedAt = Date.now();
+    stat.mastery = Math.max(stat.mastery, this.TARGET_MASTERY);
+    stat.successCount = 0;
+  }
+
   // ---- Helpers ----
+  private isReverseForgottenReady(stat: WordStat, now = Date.now()) {
+    return (
+      stat.mastery < this.TARGET_MASTERY &&
+      stat.reverseReviewedAt > stat.lastReviewed &&
+      now - stat.reverseReviewedAt >= this.REVERSE_FORGOT_COOLDOWN_MS
+    );
+  }
+
+  private isReverseForgottenCoolingDown(stat: WordStat, now = Date.now()) {
+    return (
+      stat.mastery < this.TARGET_MASTERY &&
+      stat.reverseReviewedAt > stat.lastReviewed &&
+      now - stat.reverseReviewedAt < this.REVERSE_FORGOT_COOLDOWN_MS
+    );
+  }
+
   private excludeCurrentWordIfPossible(
     pool: QuizItem[],
     currentWord?: QuizItem,
