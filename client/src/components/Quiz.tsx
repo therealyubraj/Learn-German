@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuizView } from "./QuizView";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   getCombinedWordLists,
   getWordListByName,
@@ -20,7 +20,10 @@ import { getQuizItemKey } from "../utils";
 export function Quiz() {
   const location = useLocation();
   const { session, saveStatsDeltaImmediately } = useSync();
-  const selectedQuizzes = location.state?.selectedQuizzes ?? [];
+  const selectedQuizzes = useMemo<string[]>(
+    () => location.state?.selectedQuizzes ?? [],
+    [location.state],
+  );
   const [currentItem, setCurrentItem] = useState<QuizItem>({
     LHS: "",
     RHS: "",
@@ -29,9 +32,35 @@ export function Quiz() {
   const [editingSetName, setEditingSetName] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMutatingItem, setIsMutatingItem] = useState(false);
+  const [loadState, setLoadState] = useState<
+    "loading" | "ready" | "empty" | "finished" | "error"
+  >("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const finishQuiz = useCallback((message = "Finished.") => {
+    setLoadState("finished");
+    setLoadError(message);
+  }, []);
+
+  const showNextItem = useCallback((nextItem: QuizItem | null) => {
+    if (!nextItem) {
+      finishQuiz("Finished.");
+      return false;
+    }
+
+    setCurrentItem(nextItem);
+    setLoadState("ready");
+    setLoadError(null);
+    return true;
+  }, [finishQuiz]);
 
   async function reloadQuiz(preferredItem?: QuizItem) {
     const fetchedQuiz = await getCombinedWordLists(selectedQuizzes);
+    if (fetchedQuiz.words.length === 0) {
+      setLoadState("empty");
+      setLoadError("No words were found for the selected sets.");
+      return;
+    }
     quizEngine.resetEngine(fetchedQuiz);
 
     if (preferredItem) {
@@ -42,11 +71,13 @@ export function Quiz() {
 
       if (reloadedPreferredItem) {
         setCurrentItem(reloadedPreferredItem);
+        setLoadState("ready");
+        setLoadError(null);
         return;
       }
     }
 
-    setCurrentItem(quizEngine.selectNextWord(currentItem));
+    showNextItem(quizEngine.selectNextWord(currentItem));
   }
 
   async function persistStatMutation(
@@ -128,10 +159,10 @@ export function Quiz() {
     const newItem = quizEngine.selectNextWord(currentItem);
     console.log("[quiz] onNext selected item", {
       previousKey: currentKey,
-      nextKey: getQuizItemKey(newItem),
-      isSameWord: getQuizItemKey(newItem) === currentKey,
+      nextKey: newItem ? getQuizItemKey(newItem) : null,
+      isSameWord: newItem ? getQuizItemKey(newItem) === currentKey : false,
     });
-    setCurrentItem(newItem);
+    showNextItem(newItem);
   }
 
   async function onMarkKnown() {
@@ -157,7 +188,7 @@ export function Quiz() {
     }
 
     const newItem = quizEngine.selectNextWord(currentItem);
-    setCurrentItem(newItem);
+    showNextItem(newItem);
   }
 
   async function findCurrentItemWordSet() {
@@ -300,13 +331,65 @@ export function Quiz() {
 
   useEffect(() => {
     async function fetchAndSetWordLists() {
-      const fetchedQuiz = await getCombinedWordLists(selectedQuizzes);
-      quizEngine.resetEngine(fetchedQuiz);
+      try {
+        setLoadState("loading");
+        setLoadError(null);
 
-      setCurrentItem(quizEngine.selectNextWord());
+        if (selectedQuizzes.length === 0) {
+          setLoadState("empty");
+          setLoadError("No word sets were selected.");
+          return;
+        }
+
+        const fetchedQuiz = await getCombinedWordLists(selectedQuizzes);
+        if (fetchedQuiz.words.length === 0) {
+          setLoadState("empty");
+          setLoadError("No words were found for the selected sets.");
+          return;
+        }
+
+        quizEngine.resetEngine(fetchedQuiz);
+        showNextItem(quizEngine.selectNextWord());
+      } catch (error) {
+        console.error("Failed to start quiz.", error);
+        setLoadError((error as Error).message);
+        setLoadState("error");
+      }
     }
     fetchAndSetWordLists();
-  }, []);
+  }, [selectedQuizzes, showNextItem]);
+
+  if (loadState !== "ready") {
+    return (
+      <div className="flex min-h-[calc(100vh-5rem)] w-full items-start justify-center px-4 py-6 sm:items-center sm:px-8 sm:py-10">
+        <div className="w-full max-w-[42rem] rounded-3xl border border-[#30363D] bg-[#161B22] px-6 py-7 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:px-8 sm:py-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#00C896]">
+            Quiz
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold text-[#E6EDF3]">
+            {loadState === "loading"
+              ? "Loading words..."
+              : loadState === "finished"
+                ? "Finished"
+                : "No quiz words loaded"}
+          </h1>
+          {loadState !== "loading" ? (
+            <p className="mt-3 text-sm leading-6 text-[#8B949E]">
+              {loadError ?? "Choose a word set before starting a quiz."}
+            </p>
+          ) : null}
+          {loadState !== "loading" ? (
+            <Link
+              to="/"
+              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#30363D] bg-[#0D1117] px-[22px] py-[14px] text-sm font-medium text-[#8B949E] transition-colors hover:border-[#00C896] hover:bg-[#00C896]/8 hover:text-[#00FF9C]"
+            >
+              Back to setup
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

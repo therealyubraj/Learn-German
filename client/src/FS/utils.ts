@@ -55,6 +55,10 @@ function getWordListPath(name: string) {
   return `${getWordListDirectory()}/${name}.json`;
 }
 
+function getWordListNameFromFileName(fileName: string) {
+  return fileName.endsWith(".json") ? fileName.slice(0, -".json".length) : fileName;
+}
+
 type LocalSyncMetadata = {
   settingsUpdatedAt: string;
   deletedWordLists: DeletedWordListTombstone[];
@@ -223,7 +227,7 @@ export async function getCombinedWordLists(
   const wordListDirectory = getWordListDirectory();
 
   const allFiles = (await storage.ls(wordListDirectory)).filter(
-    (x) => x.type === "file" && listNames.includes(x.name.split(".")[0])
+    (x) => x.type === "file" && listNames.includes(getWordListNameFromFileName(x.name))
   );
 
   const quiz: RunningQuiz = {

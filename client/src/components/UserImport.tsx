@@ -45,8 +45,12 @@ export function UserImport() {
       if (!listJSONInput) {
         throw new Error("JSON cannot be empty.");
       }
-      if (!listNameInput) {
+      const normalizedListName = listNameInput.trim();
+      if (!normalizedListName) {
         throw new Error("Name cannot be empty.");
+      }
+      if (normalizedListName.includes("/") || normalizedListName.includes("\\")) {
+        throw new Error("Name cannot contain slashes.");
       }
 
       let parsedJSON: WordList;
@@ -118,7 +122,7 @@ export function UserImport() {
           throw new Error(`Duplicate word list of ${existing.name}.`);
         }
 
-        if (existing.name === listNameInput) {
+        if (existing.name === normalizedListName) {
           throw new Error("This name already exists.");
         }
       }
@@ -127,7 +131,7 @@ export function UserImport() {
         list: cleanList,
         metadata: {
           checksum: newChecksum,
-          name: listNameInput,
+          name: normalizedListName,
           updatedAt: new Date().toISOString(),
         },
       });

@@ -2,6 +2,16 @@ import { QuizItem, WordStat } from "../types";
 import { getQuizItemKey } from "../utils";
 import { RunningQuiz } from "../types";
 
+type WordBucketName =
+  | "reverseForgottenReady"
+  | "newWords"
+  | "dormant"
+  | "learning"
+  | "review"
+  | "reverseForgottenCoolingDown";
+
+type WordBuckets = Record<WordBucketName, QuizItem[]>;
+
 class QuizEngine {
   private words: QuizItem[] = [];
   private stats: RunningQuiz["stats"] = {};
@@ -11,7 +21,6 @@ class QuizEngine {
   private recentlyShownKeys: string[] = [];
 
   // ---- Tunables ----
-  private readonly MAX_LEARNING_SIZE = 7;
   private readonly TARGET_MASTERY = 3;
   private readonly MASTERY_SUCCESS_THRESHOLD = 3;
   private readonly MIN_EXPOSURES_FOR_MASTERY = 5;
@@ -80,152 +89,95 @@ class QuizEngine {
   }
 
   // ---- Selection ----
-  selectNextWord(currentWord?: QuizItem): QuizItem {
+  selectNextWord(currentWord?: QuizItem): QuizItem | null {
     const currentKey = currentWord ? getQuizItemKey(currentWord) : null;
-    const learning: QuizItem[] = [];
-    const dormant: QuizItem[] = [];
-    const newWords: QuizItem[] = [];
-    const review: QuizItem[] = [];
-    const reverseForgottenReady: QuizItem[] = [];
     const now = Date.now();
+    const buckets = this.buildBuckets(now);
+    const activeWordsCount =
+      buckets.learning.length +
+      buckets.review.length +
+      buckets.reverseForgottenReady.length;
 
-    for (const word of this.words) {
-      const stat = this.stats[getQuizItemKey(word)];
-      if (!stat) continue;
+    const bucketPlan: Array<{
+      name: WordBucketName;
+      condition?: boolean;
+      preferNotRecentlyShown?: boolean;
+      sort?: (left: QuizItem, right: QuizItem) => number;
+      activateDormant?: boolean;
+    }> = [
+      {
+        name: "reverseForgottenReady",
+        sort: this.byOldestReverseReview,
+      },
+      {
+        name: "newWords",
+        condition: Math.random() < this.NEW_WORD_PROBABILITY,
+        activateDormant: true,
+      },
+      {
+        name: "dormant",
+        condition: activeWordsCount === 0,
+        activateDormant: true,
+      },
+      {
+        name: "learning",
+        preferNotRecentlyShown: true,
+        sort: this.byLeastExposureThenOldestReview,
+      },
+      {
+        name: "review",
+        preferNotRecentlyShown: true,
+        sort: this.byLeastExposureThenOldestReview,
+      },
+      {
+        name: "dormant",
+        activateDormant: true,
+      },
+      {
+        name: "newWords",
+        activateDormant: true,
+      },
+      {
+        name: "reverseForgottenCoolingDown",
+        sort: this.byOldestReverseReview,
+      },
+    ];
 
-      if (stat.lastReviewed === 0) {
-        dormant.push(word);
-        if ((stat.exposureCount ?? 0) === 0) {
-          newWords.push(word);
-        }
-      } else if (this.isReverseForgottenReady(stat, now)) {
-        reverseForgottenReady.push(word);
-      } else if (this.isReverseForgottenCoolingDown(stat, now)) {
+    for (const step of bucketPlan) {
+      if (step.condition === false) {
         continue;
-      } else if (
-        stat.mastery < this.TARGET_MASTERY ||
-        stat.exposureCount < this.MIN_EXPOSURES_FOR_MASTERY
-      ) {
-        learning.push(word);
-      } else {
-        review.push(word);
       }
-    }
 
-    const availableNewWords = this.excludeCurrentWordIfPossible(
-      newWords,
-      currentWord,
-    );
-    const availableDormant = this.excludeCurrentWordIfPossible(
-      dormant,
-      currentWord,
-    );
-    const availableLearning = this.excludeCurrentWordIfPossible(
-      learning,
-      currentWord,
-    );
-    const availableReview = this.excludeCurrentWordIfPossible(
-      review,
-      currentWord,
-    );
-    const availableReverseForgottenReady = this.excludeCurrentWordIfPossible(
-      reverseForgottenReady,
-      currentWord,
-    );
-
-    if (availableReverseForgottenReady.length > 0) {
-      availableReverseForgottenReady.sort((a, b) => {
-        const sa = this.stats[getQuizItemKey(a)];
-        const sb = this.stats[getQuizItemKey(b)];
-        return sa.reverseReviewedAt - sb.reverseReviewedAt;
+      const chosen = this.pickCandidate(buckets[step.name], currentWord, {
+        preferNotRecentlyShown: step.preferNotRecentlyShown,
+        sort: step.sort,
       });
 
-      const chosen = availableReverseForgottenReady[0];
-      console.log("[quiz-engine] selected reverse-forgotten word", {
-        previousKey: currentKey,
-        nextKey: getQuizItemKey(chosen),
-        reverseForgottenReady: reverseForgottenReady.length,
-      });
+      if (!chosen) {
+        continue;
+      }
+
+      if (step.activateDormant) {
+        this.activateDormantWord(chosen);
+      }
+
+      this.logSelection(step.name, chosen, currentKey, buckets);
       this.recordShown(chosen);
       return chosen;
     }
 
-    // 1. Occasionally inject a completely new word.
-    if (
-      availableNewWords.length > 0 &&
-      Math.random() < this.NEW_WORD_PROBABILITY
-    ) {
-      return this.activateDormantWord(availableNewWords);
-    }
-
-    // 2. If the set has no active words yet, start with a new one.
-    if (
-      learning.length === 0 &&
-      review.length === 0 &&
-      availableDormant.length > 0
-    ) {
-      return this.activateDormantWord(availableDormant);
-    }
-
-    // 3. Fair rotation among learning words
-    const eligible = availableLearning.filter((word) => {
-      const key = getQuizItemKey(word);
-      return !this.recentlyShownKeys.includes(key);
-    });
-
-    let pool =
-      eligible.length > 0
-        ? eligible
-        : availableLearning.length > 0
-          ? availableLearning
-          : this.getReviewPool(availableReview);
-
-    pool.sort((a, b) => {
-      const sa = this.stats[getQuizItemKey(a)];
-      const sb = this.stats[getQuizItemKey(b)];
-
-      // primary: least exposure
-      if (sa.exposureCount! !== sb.exposureCount!) {
-        return sa.exposureCount! - sb.exposureCount!;
-      }
-
-      // secondary: least recently reviewed
-      return sa.lastReviewed - sb.lastReviewed;
-    });
-
-    const chosen = pool[0];
-    if (!chosen) {
-      throw new Error("Quiz engine could not select a next word.");
-    }
-
-    const chosenKey = getQuizItemKey(chosen);
-    if (currentKey && chosenKey === currentKey) {
-      console.warn("[quiz-engine] selected same word twice", {
-        key: chosenKey,
-        poolSize: pool.length,
-        learning: learning.length,
-        dormant: dormant.length,
-        newWords: newWords.length,
-        review: review.length,
-        reverseForgottenReady: reverseForgottenReady.length,
-        recentlyShownKeys: [...this.recentlyShownKeys],
+    const fallback = this.pickCandidate(this.words, currentWord);
+    if (!fallback) {
+      console.log("[quiz-engine] finished: no non-current word available", {
+        currentKey,
+        totalWords: this.words.length,
       });
-    } else {
-      console.log("[quiz-engine] selected next word", {
-        previousKey: currentKey,
-        nextKey: chosenKey,
-        poolSize: pool.length,
-        learning: learning.length,
-        dormant: dormant.length,
-        newWords: newWords.length,
-        review: review.length,
-        reverseForgottenReady: reverseForgottenReady.length,
-      });
+      return null;
     }
 
-    this.recordShown(chosen);
-
-    return chosen;
+    this.logSelection("fallback", fallback, currentKey, buckets);
+    this.recordShown(fallback);
+    return fallback;
   }
 
   // ---- Update ----
@@ -326,6 +278,42 @@ class QuizEngine {
   }
 
   // ---- Helpers ----
+  private buildBuckets(now: number): WordBuckets {
+    const buckets: WordBuckets = {
+      reverseForgottenReady: [],
+      newWords: [],
+      dormant: [],
+      learning: [],
+      review: [],
+      reverseForgottenCoolingDown: [],
+    };
+
+    for (const word of this.words) {
+      const stat = this.stats[getQuizItemKey(word)];
+      if (!stat) continue;
+
+      if (stat.lastReviewed === 0) {
+        buckets.dormant.push(word);
+        if ((stat.exposureCount ?? 0) === 0) {
+          buckets.newWords.push(word);
+        }
+      } else if (this.isReverseForgottenReady(stat, now)) {
+        buckets.reverseForgottenReady.push(word);
+      } else if (this.isReverseForgottenCoolingDown(stat, now)) {
+        buckets.reverseForgottenCoolingDown.push(word);
+      } else if (
+        stat.mastery < this.TARGET_MASTERY ||
+        stat.exposureCount < this.MIN_EXPOSURES_FOR_MASTERY
+      ) {
+        buckets.learning.push(word);
+      } else {
+        buckets.review.push(word);
+      }
+    }
+
+    return buckets;
+  }
+
   private isReverseForgottenReady(stat: WordStat, now = Date.now()) {
     return (
       stat.mastery < this.TARGET_MASTERY &&
@@ -342,46 +330,113 @@ class QuizEngine {
     );
   }
 
-  private excludeCurrentWordIfPossible(
-    pool: QuizItem[],
+  private activateDormantWord(word: QuizItem) {
+    const key = getQuizItemKey(word);
+    const stat = this.stats[key];
+
+    if (!stat) {
+      return;
+    }
+
+    stat.lastReviewed = Date.now();
+    stat.exposureCount = stat.exposureCount ?? 0;
+  }
+
+  private pickCandidate(
+    candidates: QuizItem[],
     currentWord?: QuizItem,
+    options: {
+      preferNotRecentlyShown?: boolean;
+      sort?: (left: QuizItem, right: QuizItem) => number;
+    } = {},
   ) {
-    if (!currentWord || pool.length <= 1) {
-      return pool;
+    const nonCurrentCandidates = this.withoutCurrent(candidates, currentWord);
+    if (nonCurrentCandidates.length === 0) {
+      return null;
+    }
+
+    const sortedCandidates = this.sorted(nonCurrentCandidates, options.sort);
+    if (!options.preferNotRecentlyShown) {
+      return sortedCandidates[0];
+    }
+
+    const notRecentlyShown = sortedCandidates.filter(
+      (word) => !this.recentlyShownKeys.includes(getQuizItemKey(word)),
+    );
+
+    return notRecentlyShown[0] ?? sortedCandidates[0];
+  }
+
+  private withoutCurrent(candidates: QuizItem[], currentWord?: QuizItem) {
+    if (!currentWord) {
+      return candidates;
     }
 
     const currentKey = getQuizItemKey(currentWord);
-    const withoutCurrentWord = pool.filter(
-      (word) => getQuizItemKey(word) !== currentKey,
-    );
-
-    return withoutCurrentWord.length > 0 ? withoutCurrentWord : pool;
+    return candidates.filter((word) => getQuizItemKey(word) !== currentKey);
   }
 
-  private activateDormantWord(dormant: QuizItem[]): QuizItem {
-    const word = dormant[Math.floor(Math.random() * dormant.length)];
-    const key = getQuizItemKey(word);
-
-    const stat = this.stats[key];
-    stat.lastReviewed = Date.now();
-    stat.exposureCount = stat.exposureCount ?? 0;
-
-    this.recordShown(word);
-
-    return word;
+  private sorted(
+    candidates: QuizItem[],
+    sort?: (left: QuizItem, right: QuizItem) => number,
+  ) {
+    const nextCandidates = [...candidates];
+    if (sort) {
+      nextCandidates.sort(sort);
+    }
+    return nextCandidates;
   }
 
-  private getReviewPool(review: QuizItem[]): QuizItem[] {
-    const eligibleReview = review.filter((word) => {
-      const key = getQuizItemKey(word);
-      return !this.recentlyShownKeys.includes(key);
-    });
+  private byLeastExposureThenOldestReview = (
+    left: QuizItem,
+    right: QuizItem,
+  ) => {
+    const leftStat = this.stats[getQuizItemKey(left)];
+    const rightStat = this.stats[getQuizItemKey(right)];
 
-    if (eligibleReview.length > 0) {
-      return eligibleReview;
+    if (leftStat.exposureCount !== rightStat.exposureCount) {
+      return leftStat.exposureCount - rightStat.exposureCount;
     }
 
-    return review.length > 0 ? review : this.words;
+    return leftStat.lastReviewed - rightStat.lastReviewed;
+  };
+
+  private byOldestReverseReview = (left: QuizItem, right: QuizItem) => {
+    const leftStat = this.stats[getQuizItemKey(left)];
+    const rightStat = this.stats[getQuizItemKey(right)];
+    return leftStat.reverseReviewedAt - rightStat.reverseReviewedAt;
+  };
+
+  private logSelection(
+    source: WordBucketName | "fallback",
+    word: QuizItem,
+    previousKey: string | null,
+    buckets: WordBuckets,
+  ) {
+    const nextKey = getQuizItemKey(word);
+    if (previousKey && previousKey === nextKey) {
+      console.warn("[quiz-engine] selected same word unexpectedly", {
+        key: nextKey,
+        source,
+        totalWords: this.words.length,
+      });
+      return;
+    }
+
+    console.log("[quiz-engine] selected next word", {
+      previousKey,
+      nextKey,
+      source,
+      buckets: {
+        reverseForgottenReady: buckets.reverseForgottenReady.length,
+        newWords: buckets.newWords.length,
+        dormant: buckets.dormant.length,
+        learning: buckets.learning.length,
+        review: buckets.review.length,
+        reverseForgottenCoolingDown:
+          buckets.reverseForgottenCoolingDown.length,
+      },
+    });
   }
 
   private recordShown(word: QuizItem) {

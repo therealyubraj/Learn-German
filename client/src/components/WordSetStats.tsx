@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getAllStoredWordLists, getStatsForWords } from "../FS/utils";
 import { quizEngine } from "../quiz/engine";
 import { StoredWordList, WordStat } from "../types";
@@ -170,6 +171,7 @@ function ProgressRow({
 }
 
 export function WordSetStats() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [summaries, setSummaries] = useState<WordSetStatsSummary[]>([]);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -190,9 +192,6 @@ export function WordSetStats() {
         }
 
         setSummaries(nextSummaries);
-        setSelectedName(
-          (current) => current ?? nextSummaries[0]?.wordSet.metadata.name ?? null,
-        );
       } catch (loadError) {
         console.error("Failed to load word set stats.", loadError);
         setError("Could not load word set stats.");
@@ -203,6 +202,36 @@ export function WordSetStats() {
 
     void loadStats();
   }, []);
+
+  useEffect(() => {
+    if (summaries.length === 0) {
+      return;
+    }
+
+    const requestedName = searchParams.get("set");
+    const requestedSummary = summaries.find(
+      (summary) => summary.wordSet.metadata.name === requestedName,
+    );
+    const nextSelectedName =
+      requestedSummary?.wordSet.metadata.name ??
+      summaries[0]?.wordSet.metadata.name ??
+      null;
+
+    if (nextSelectedName && requestedName !== nextSelectedName) {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set("set", nextSelectedName);
+          return next;
+        },
+        { replace: true },
+      );
+    }
+
+    if (nextSelectedName !== selectedName) {
+      setSelectedName(nextSelectedName);
+    }
+  }, [searchParams, selectedName, setSearchParams, summaries]);
 
   const selectedSummary = useMemo(
     () =>
@@ -250,7 +279,14 @@ export function WordSetStats() {
                   <button
                     key={summary.wordSet.metadata.name}
                     type="button"
-                    onClick={() => setSelectedName(summary.wordSet.metadata.name)}
+                    onClick={() => {
+                      const nextSelectedName = summary.wordSet.metadata.name;
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current);
+                        next.set("set", nextSelectedName);
+                        return next;
+                      });
+                    }}
                     className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
                       isSelected
                         ? "border-[#00C896] bg-[#00C896]/12"
